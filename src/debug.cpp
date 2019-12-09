@@ -1,6 +1,6 @@
 /*************************************************************
 
-	LSD 7.2 - July 2019
+	LSD 7.2 - December 2019
 	written by Marco Valente, Universita' dell'Aquila
 	and by Marcelo Pereira, University of Campinas
 
@@ -83,16 +83,16 @@ if ( ! strcmp( Tcl_GetVar( inter, "existMenu", 0 ), "0" ) ||
 	 strcmp( Tcl_GetVar( inter, "confMenu", 0 ), ".deb.m" ) )
 {
 	cmd( "destroy .deb.m" );
-	cmd( "menu .deb.m -tearoff 0 -relief groove -bd 2" );
+	cmd( "menu .deb.m -tearoff 0" );
 	cmd( "set w .deb.m.exit" );
 	cmd( ".deb.m add cascade -label Exit -menu $w -underline 0" );
-	cmd( "menu $w -tearoff 0 -relief groove -bd 2" );
+	cmd( "menu $w -tearoff 0" );
 	if ( mode == 3 )
 		cmd( "$w add command -label \"Quit and Resume Simulation\" -command { set choice 7 } -underline 0 -accelerator Esc" );
 	else
 		cmd( "$w add command -label \"Quit and Return to Browser\" -command { set choice 7 } -underline 0 -accelerator Esc" );
 	cmd( "set w .deb.m.help" );
-	cmd( "menu $w -tearoff 0 -relief groove -bd 2" );
+	cmd( "menu $w -tearoff 0" );
 	cmd( ".deb.m add cascade -label Help -menu $w -underline 0" );
 	cmd( "$w add command -label \"Help on Debugger\" -underline 0 -accelerator F1 -command { LsdHelp debug.html }" );
 	cmd( "$w add command -label \"LSD Quick Help\" -underline 4 -command { LsdHelp LSD_quickhelp.html }" );
@@ -204,7 +204,7 @@ while ( choice == 0 )
 	if ( mode == 1 || mode == 4 )
 	{
 		cmd( "if { ! [ winfo exists .deb.v ] } { \
-				frame .deb.v -relief groove -bd 2; \
+				frame .deb.v; \
 				frame .deb.v.v1; \
 				label .deb.v.v1.name1 -text \"Variable:\"; \
 				label .deb.v.v1.name2 -width 20 -anchor w -fg red -text \"\"; \
@@ -701,7 +701,7 @@ while ( choice == 0 )
 			cmd( "frame $s.l" );
 			cmd( "label $s.l.l -text \"Find object containing variable\"" );
 			cmd( "entry $s.l.e -width 20 -justify center -textvariable en" );
-			cmd( "bind $s.l.e <KeyRelease> {if { %%N < 256 && [info exists modElem] } { set bb1 [.deb.so.l.e index insert]; set bc1 [.deb.so.l.e get]; set bf1 [lsearch -glob $modElem $bc1*]; if { $bf1 !=-1 } { set bd1 [lindex $modElem $bf1]; .deb.so.l.e delete 0 end; .deb.so.l.e insert 0 $bd1; .deb.so.l.e index $bb1; .deb.so.l.e selection range $bb1 end } } }" );
+			cmd( "bind $s.l.e <KeyRelease> { if { %%N < 256 && [ info exists modElem ] } { set bb1 [ .deb.so.l.e index insert ]; set bc1 [ .deb.so.l.e get ]; set bf1 [ lsearch -glob $modElem $bc1* ]; if { $bf1 !=-1 } { set bd1 [ lindex $modElem $bf1 ]; .deb.so.l.e delete 0 end; .deb.so.l.e insert 0 $bd1; .deb.so.l.e index $bb1; .deb.so.l.e selection range $bb1 end } } }" );
 			cmd( "pack $s.l.l $s.l.e" );
 
 			cmd( "frame $s.c" );
@@ -1175,7 +1175,7 @@ void deb_show( object *r )
 	int i;
 
 	// fix the top frame before proceeding
-	cmd( "if { ! [ winfo exists .deb.v ] } { frame .deb.v -relief groove -bd 2 }" );
+	cmd( "if { ! [ winfo exists .deb.v ] } { frame .deb.v }" );
 	cmd( "if { ! [ winfo exists .deb.v.v2 ] } { \
 			frame .deb.v.v2; \
 			label .deb.v.v2.obj -text \"Level & object instance: \"; \

@@ -1,6 +1,6 @@
 #*************************************************************
 #
-#	LSD 7.2 - July 2019
+#	LSD 7.2 - December 2019
 #	written by Marco Valente, Universita' dell'Aquila
 #	and by Marcelo Pereira, University of Campinas
 #
@@ -19,11 +19,11 @@
 # List models returning the list a exploring directory b
 #************************************************
 proc lst_mdl { } {
-	global lmod ldir lgroup cgroup
+	global lmod ldir lgroup cgroup GROUP_INFO MODEL_INFO
 
-	if [ file exists modelinfo.txt ] {
+	if [ file exists $MODEL_INFO ] {
 		lappend ldir [ pwd ]
-		set f [ open modelinfo.txt r ]
+		set f [ open $MODEL_INFO r ]
 		set info [ gets $f ]
 		close $f
 		lappend lmod "$info"
@@ -36,8 +36,8 @@ proc lst_mdl { } {
 		set flag 0
 		if [ file isdirectory $i ] {
 			cd $i
-			if [ file exists groupinfo.txt ] {
-				set f [ open groupinfo.txt r ]
+			if [ file exists $GROUP_INFO ] {
+				set f [ open $GROUP_INFO r ]
 				set info [ gets $f ]
 				close $f
 				if { $cgroup != "." } {
@@ -60,14 +60,28 @@ proc lst_mdl { } {
 
 #************************************************
 # CHS_MDL
+# Compare models dialog
 #************************************************
+proc slct { } {
+	global sd sf ldir
+	
+	set tmp [ .l.l.l.l curselection ]
+	if { $tmp == "" } {
+		set sd ""
+		set sf ""
+		return 
+	}
+
+	set sd [ lindex $ldir $tmp ]
+	set sf [ file tail [ glob -nocomplain [ file join $sd *.cpp ] ] ]
+}
+
+
 proc chs_mdl { } {
 	global lmod ldir sd sf d1 d2 f1 f2 lgroup cgroup butWid
 
 	set lmod ""
 	set ldir ""
-	set sd ""
-	set sf ""
 	set d1 ""
 	set d2 ""
 	set f1 ""
@@ -76,33 +90,43 @@ proc chs_mdl { } {
 	set cgroup ""
 	set glabel ""
 
-	unset lmod
-	unset ldir
-	unset sd
-	unset sf
+	unset -nocomplain sd
+	unset -nocomplain sf
 
 	lst_mdl
 
 	newtop .l "LSD Models" { set choice -1; destroytop .l }
 
-	frame .l.l -relief groove -bd 2
+	frame .l.l
 	
-	label .l.l.tit -text "List of models" -fg red
-	scrollbar .l.l.vs -command ".l.l.l yview"
-	listbox .l.l.l -height 30 -width 70 -yscroll ".l.l.vs set" -selectmode browse
-	mouse_wheel .l.l.l
+	label .l.l.tit -text "List of models"
+	pack .l.l.tit
 	
-	bind .l.l.l <ButtonRelease> { set glabel [ lindex $lgroup [ .l.l.l curselection ] ]; .l.l.gl configu -text "$glabel" }
-	bind .l.l.l <KeyRelease-Up> { set glabel [ lindex $lgroup [ .l.l.l curselection ] ]; .l.l.gl configu -text "$glabel" }
-	bind .l.l.l <KeyRelease-Down> { set glabel [ lindex $lgroup [ .l.l.l curselection ] ]; .l.l.gl configu -text "$glabel" }
+	frame .l.l.l
+	scrollbar .l.l.l.vs -command ".l.l.l.l yview"
+	listbox .l.l.l.l -height 20 -width 50 -yscroll ".l.l.l.vs set" -selectmode browse
+	mouse_wheel .l.l.l.l
 	
-	label .l.l.gt -text "Selected model contained in group:" 
-	label .l.l.gl -text "$glabel" 
+	bind .l.l.l.l <ButtonRelease> { set glabel [ lindex $lgroup [ .l.l.l.l curselection ] ]; .l.l.gt.t configu -text "$glabel" }
+	bind .l.l.l.l <KeyRelease-Up> { set glabel [ lindex $lgroup [ .l.l.l.l curselection ] ]; .l.l.gt.t configu -text "$glabel" }
+	bind .l.l.l.l <KeyRelease-Down> { set glabel [ lindex $lgroup [ .l.l.l.l curselection ] ]; .l.l.gt.t configu -text "$glabel" }
+	
+	pack .l.l.l.vs -side right -fill y
+	pack .l.l.l.l -expand yes -fill both 
+	pack .l.l.l 
+	
+	frame .l.l.gt
+	label .l.l.gt.l -text "Selected model is in group:" 
+	label .l.l.gt.t -text "$glabel" -fg red
+	pack .l.l.gt.l .l.l.gt.t
 
-	frame .l.t -relief groove -bd 2
+	pack .l.l.gt -expand yes -fill x -anchor w -padx 10 -pady 10
+
+	frame .l.t
 	frame .l.t.f1 
-	label .l.t.f1.tit -text "Selected models" -foreground red
-	frame .l.t.f1.m1 -relief groove -bd 2
+	label .l.t.f1.tit -text "Selected models"
+	
+	frame .l.t.f1.m1
 	label .l.t.f1.m1.l -text "First model"
 	entry .l.t.f1.m1.d -width 50 -textvariable d1 -justify center
 	entry .l.t.f1.m1.f -width 20 -textvariable f1 -justify center
@@ -111,24 +135,24 @@ proc chs_mdl { } {
 	
 	button .l.t.f1.m1.i -width $butWid -text Insert -command { slct; if { [ info exists sd ] } { set d1 "$sd"; set f1 "$sf" } }
 	
-	pack .l.t.f1.m1.l -anchor nw
+	pack .l.t.f1.m1.l
 	pack .l.t.f1.m1.d .l.t.f1.m1.f -expand yes -fill x
 	
 	pack .l.t.f1.m1.i -padx 10 -pady 10 -anchor n
 
-	frame .l.t.f1.m2 -relief groove -bd 2
+	frame .l.t.f1.m2
 	label .l.t.f1.m2.l -text "Second model"
 	entry .l.t.f1.m2.d -width 50 -textvariable d2 -justify center
 	entry .l.t.f1.m2.f -width 20 -textvariable f2 -justify center
 	
 	bind .l.t.f1.m2.f <3> { set tmp [ tk_getOpenFile -parent .l -title "Load LSD File" -initialdir "$d2" ]; if { $tmp != "" && ! [ fn_spaces "$tmp" .l ] } {set f2 [file tail $tmp] } }
 	
-	button .l.t.f1.m2.i -width $butWid -text Insert -command {slct; if { [info exists sd]} {set d2 "$sd"; set f2 "$sf"} }
-	pack .l.t.f1.m2.l -anchor nw
+	button .l.t.f1.m2.i -width $butWid -text Insert -command {slct; if { [ info exists sd ] } { set d2 "$sd"; set f2 "$sf" } }
+	pack .l.t.f1.m2.l
 	pack .l.t.f1.m2.d .l.t.f1.m2.f -expand yes -fill x -anchor nw
 	pack .l.t.f1.m2.i -padx 10 -pady 10 -anchor n
 
-	pack .l.t.f1.tit .l.t.f1.m1 .l.t.f1.m2 -expand yes -fill x -anchor n
+	pack .l.t.f1.tit .l.t.f1.m1 .l.t.f1.m2 -expand yes -fill both -anchor n -padx 10 -pady 10
 	pack .l.t.f1 -fill x -anchor n
 
 	frame .l.t.b
@@ -138,40 +162,16 @@ proc chs_mdl { } {
 	pack .l.t.b.cmp .l.t.b.cnc -padx 10 -pady 10 -side left
 	pack .l.t.b -side bottom -anchor e
 
-	pack .l.l.tit
-
-	pack .l.l.vs -side right -fill y
-	pack .l.l.l -expand yes -fill both 
-	pack .l.l.gt .l.l.gl -side top -expand yes -fill x -anchor w
-
-	pack .l.l .l.t -expand yes -fill both -side left
+	pack .l.l .l.t -padx 10 -pady 10 -expand yes -fill both -side left
 
 	set j 0
 	foreach i $lmod {
 		set k [ lindex $lgroup $j ]
 		incr j
-		.l.l.l insert end "$i" 
+		.l.l.l.l insert end "$i" 
 	}
 	
 	showtop .l centerS
-}
-
-
-#************************************************
-# SLCT
-#************************************************
-proc slct { } {
-	global sd sf ldir
-	
-	set tmp [ .l.l.l curselection ]
-	if { $tmp == "" } {
-		set sd ""
-		set sf ""
-		return 
-	}
-
-	set sd [ lindex $ldir $tmp ]
-	set sf [ file tail [ glob -nocomplain [ file join $sd *.cpp ] ] ]
 }
 
 
@@ -191,13 +191,13 @@ set macYes [ list "g++" "-framework" "-lz" "-lpthread" "-DMAC_PKG" ]
 set macNo  [ list ".exe" "/gnu/" "/gnu64/" "x86_64-w64-mingw32-g++" "-mthreads" "-mwindows" ]
 
 proc check_sys_opt { } {
-	global LsdSrc CurPlatform win32Yes win32No win64Yes win64No linuxYes linuxNo osxYes osxNo macYes macNo
+	global RootLsd LsdSrc CurPlatform win32Yes win32No win64Yes win64No linuxYes linuxNo osxYes osxNo macYes macNo SYSTEM_OPTIONS
 	
-	if { ! [ file exists "$LsdSrc/system_options.txt" ] } { 
-		return "File 'system_options.txt' not found (click 'Default' button to recreate it)"
+	if { ! [ file exists "$RootLsd/$LsdSrc/$SYSTEM_OPTIONS" ] } { 
+		return "File '$SYSTEM_OPTIONS' not found (click 'Default' button to recreate it)"
 	}
 	
-	set f [ open "$LsdSrc/system_options.txt" r ]
+	set f [ open "$RootLsd/$LsdSrc/$SYSTEM_OPTIONS" r ]
 	set options [ read -nonewline $f ]
 	close $f
 	
@@ -357,12 +357,13 @@ proc make_background { target threads nw macPkg } {
 # Get the list of source files, including the main and extra files
 #************************************************
 proc get_source_files { path } {
+	global MODEL_OPTIONS
 
-	if { ! [ file exists "$path/model_options.txt" ] } { 
+	if { ! [ file exists "$path/$MODEL_OPTIONS" ] } { 
 		return [ list ]
 	}
 
-	set f [ open "$path/model_options.txt" r ]
+	set f [ open "$path/$MODEL_OPTIONS" r ]
 	set options [ read -nonewline $f ]
 	close $f
 
@@ -397,19 +398,21 @@ proc get_source_files { path } {
 # Produce the element list file (elements.txt) to be used in LSD browser
 #************************************************
 # list of commands to search for parameters (X=number of macro arguments, Y=position of parameter)
-set cmds_1_1 [ list V SUM MAX MIN AVE SD STAT RECALC ]
-set cmds_2_1 [ list WHTAVE SEARCH_CND WRITE INCR MULT ]
-set cmds_2_2 [ list VS SUMS MAXS MINS AVES WHTAVE SDS STATS RNDDRAW RECALCS ]
-set cmds_3_1 [ list WRITEL ]
-set cmds_3_2 [ list WHTAVES SEARCH_CNDS RNDDRAW_TOT WRITES INCRS MULTS SORT ]
+set cmds_1_1 [ list V SUM MAX MIN AVE MED SD STAT RECALC LAST_CALC INIT_TSEARCH_CND ]
+set cmds_2_1 [ list VL SUML MAXL MINL AVEL MEDL WHTAVE SDL SEARCH_CND TSEARCH_CND WRITE INCR MULT V_CHEAT ]
+set cmds_2_2 [ list VS SUMS MAXS MINS AVES MEDS WHTAVE SDS STATS RNDDRAW RECALCS LAST_CALCS INIT_TSEARCH_CNDS ]
+set cmds_3_1 [ list WRITEL SEARCH_CNDL V_CHEATL ]
+set cmds_3_2 [ list VLS SUMLS MAXLS MINLS AVELS MEDLS WHTAVES SDLS SEARCH_CNDS TSEARCH_CNDS RNDDRAWL RNDDRAW_TOT WRITES INCRS MULTS SORT V_CHEATS ]
 set cmds_3_3 [ list WHTAVES RNDDRAWS ]
-set cmds_4_2 [ list WRITELS SORT2 ]
-set cmds_4_3 [ list RNDDRAW_TOTS SORTS SORT2 ]
-set cmds_5_3 [ list SORT2S ]
+set cmds_4_1 [ list WRITELL ]
+set cmds_4_2 [ list WHTAVELS WRITELS SEARCH_CNDLS RNDDRAW_TOTL SORT2 V_CHEATLS ]
+set cmds_4_3 [ list WHTAVELS RNDDRAWLS RNDDRAW_TOTS SORTS SORT2 ]
+set cmds_5_2 [ list WRITELLS ]
+set cmds_5_3 [ list RNDDRAW_TOTLS SORT2S ]
 set cmds_5_4 [ list SORT2S ]
 
 proc create_elem_file { path } {
-	global exeTime cmds_1_1 cmds_2_1 cmds_2_2 cmds_3_1 cmds_3_2 cmds_3_3 cmds_4_2 cmds_4_3 cmds_5_3 cmds_5_4
+	global exeTime cmds_1_1 cmds_2_1 cmds_2_2 cmds_3_1 cmds_3_2 cmds_3_3 cmds_4_1 cmds_4_2 cmds_4_3 cmds_5_2 cmds_5_3 cmds_5_4
 	
 	# don't recreate if executable file was not changed
 	if { [ file exists "$path/elements.txt" ] && [ info exists exeTime ] } {
@@ -483,6 +486,12 @@ proc create_elem_file { path } {
 				lappend pars $par
 			}
 		}
+		foreach cmd $cmds_4_1 {
+			set calls [ regexp -all -inline -- [ subst -nocommands -nobackslashes {$cmd[ \t]*\([ \t]*\"(\w+)\"[ \t]*,[^;]+,[^;]+,[^;]+\)} ] $text ]
+			foreach { call par } $calls {
+				lappend pars $par
+			}
+		}
 		foreach cmd $cmds_4_2 {
 			set calls [ regexp -all -inline -- [ subst -nocommands -nobackslashes {$cmd[ \t]*\([^;]+,[ \t]*\"(\w+)\"[ \t]*,[^;]+,[^;]+\)} ] $text ]
 			foreach { call par } $calls {
@@ -491,6 +500,12 @@ proc create_elem_file { path } {
 		}
 		foreach cmd $cmds_4_3 {
 			set calls [ regexp -all -inline -- [ subst -nocommands -nobackslashes {$cmd[ \t]*\([^;]+,[^;]+,[ \t]*\"(\w+)\"[ \t]*,[^;]+\)} ] $text ]
+			foreach { call par } $calls {
+				lappend pars $par
+			}
+		}
+		foreach cmd $cmds_5_2 {
+			set calls [ regexp -all -inline -- [ subst -nocommands -nobackslashes {$cmd[ \t]*\([^;]+,[ \t]*\"(\w+)\"[ \t]*,[^;]+,[^;]+,[^;]+\)} ] $text ]
 			foreach { call par } $calls {
 				lappend pars $par
 			}
@@ -552,15 +567,23 @@ proc read_elem_file { path } {
 # Update the missing elements list, considering the elements already in the model structure
 #************************************************
 proc upd_miss_elem { } {
-	global modElem progVar progPar missPar missVar
+	global modObj modElem progVar progPar missPar missVar
 	
 	if [ info exists modElem ] {
-		set missVar [ lsort -dictionary [ remove_elem $progVar $modElem ] ]
-		set missPar [ lsort -dictionary [ remove_elem $progPar $modElem ] ]
+		set missVar [ remove_elem $progVar $modElem ]
+		set missPar [ remove_elem $progPar $modElem ]
 	} else {
 		set missVar $progVar
 		set missPar $progPar
 	}
+	
+	if [ info exists modObj ] {
+		set missVar [ remove_elem $missVar $modObj ]
+		set missPar [ remove_elem $missPar $modObj ]
+	}
+	
+	set missVar [ lsort -dictionary $missVar ]
+	set missPar [ lsort -dictionary $missPar ]
 }
 
 

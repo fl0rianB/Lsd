@@ -1,7 +1,7 @@
 #!/bin/bash
 #**************************************************************
 #
-#	LSD 7.2 - July 2019
+#	LSD 7.2 - December 2019
 #	written by Marco Valente, Universita' dell'Aquila
 #	and by Marcelo Pereira, University of Campinas
 #
@@ -46,4 +46,4 @@ else
 fi
 
 # fix alias icon
-"$LSDROOT"/gnu/bin/SetFileIcon -file ~/Desktop/"$ALIAS" -image "$LSDROOT"/src/icons/lsd.icns
+"$LSDROOT"/gnu/bin/seticon "$LSDROOT"/src/icons/lsd.icns ~/Desktop/"$ALIAS"

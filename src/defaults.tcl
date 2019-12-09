@@ -1,6 +1,6 @@
 #*************************************************************
 #
-#	LSD 7.2 - July 2019
+#	LSD 7.2 - December 2019
 #	written by Marco Valente, Universita' dell'Aquila
 #	and by Marcelo Pereira, University of Campinas
 #
@@ -64,7 +64,7 @@ set bordsize	2	; # width of windows borders
 set tbarsize	55	; # size in pixels of bottom taskbar (exclusion area) - Windows 7+ = 82
 set hsizeL		800	; # LMM horizontal size in pixels
 set vsizeL		600	; # LMM vertical size in pixels
-set hsizeLmin	600	; # LMM minimum horizontal size in pixels
+set hsizeLmin	620	; # LMM minimum horizontal size in pixels
 set vsizeLmin	300	; # LMM minimum vertical size in pixels
 set hsizeB 		400	; # browser horizontal size in pixels
 set vsizeB		620	; # browser vertical size in pixels
@@ -79,6 +79,30 @@ set vsizeN		550	; # objects numbers editor vertical size in pixels
 set daCwidLinux		28	; # series lists width (Linux)
 set daCwidMac		28	; # Mac
 set daCwidWindows	36	; # Windows
+
+# model structure window defaults
+set borderM		20		; # open space to border
+set nsizeM		20		; # node size (diameter)
+set vmarginM	20		; # labels margins to nodes
+set vstepM		75		; # vertical absolute step
+set hfactM		1.0		; # initial horizontal scaling factor
+set vfactM		1.0		; # initial vertical scaling factor
+set hfactMmin	0.5		; # minimum horizontal scaling factor
+set vfactMmin	0.7		; # minimum vertical scaling factor
+set rstepM		0.1		; # relative scaling factor step step
+set rfactM		0.3		; # horizontal range exponential factor
+set rinitM		750		; # horizontal initial width (4 root sons)
+set rincrM		100		; # horizontal width increase step
+set bsizeMwin	2		; # button size (Windows/Mac)
+set bsizeMlin	1		; # button size (Linux)
+set bhstepMwin	25		; # button horizontal step (Windows/Mac)
+set bhstepMlin	35		; # button horizontal step (Linux)
+set bvstepMwin	26		; # button vertical step (Windows/Mac)
+set bvstepMlin	30		; # button vertical step (Linux)
+set ncolorM 	white	; # node color
+set ncolorMsel 	blue	; # selected node color
+set tcolorM 	red		; # node name color
+set lcolorM 	gray	; # line color
 
 # mouse wheel scroll factor (sensitivity)
 set sfmwheel	1	; # increase to accelerate mouse wheel and decrease to slow down
@@ -105,8 +129,8 @@ set deltaSizeWindows	2
 
 # OS specific default window buttons widths
 set butLinux	7
-set butMacTk85	7
-set butMacTk86	8
+set butMac		7
+set butMacTk869	8
 set butWindows	9
 
 # OS specific screen location offset adjustments
@@ -116,6 +140,13 @@ set corrXlinux	0
 set corrYlinux	-55
 set corrXwindows 0
 set corrYwindows 0
+
+# OS specific default model executable name
+set exeLinux "lsd"
+set exeMacPkg "LSD"
+set exeMacOSX "lsd"
+set exeWin32 "lsd"
+set exeWin64 "lsd"
 
 # OS specific default system terminal
 set sysTermMac		"Terminal"	; # "Terminal", "xterm"
@@ -154,10 +185,3 @@ set gnuplotTermWindows	""	; # "wxt", "qt" , "windows"
 # default gnuplot options
 set gnuplotGrid3D	"60,60,3"				;
 set gnuplotOptions	"set ticslevel 0.0"		;
-
-
-#************************************************
-# DEFAULTS_LOADED
-# Indicate defaults are loaded
-#************************************************
-proc defaults_loaded { } { }

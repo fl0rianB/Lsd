@@ -1,6 +1,6 @@
 /*************************************************************
 
-	LSD 7.2 - July 2019
+	LSD 7.2 - December 2019
 	written by Marco Valente, Universita' dell'Aquila
 	and by Marcelo Pereira, University of Campinas
 
@@ -84,7 +84,7 @@ Global definitions among all LSD C++ modules
 #define _LSD_MAJOR_ 7
 #define _LSD_MINOR_ 2
 #define _LSD_VERSION_ "7.2"
-#define _LSD_DATE_ "July 31 2019"        // __DATE__
+#define _LSD_DATE_ "December 1 2019"        // __DATE__
 
 // global constants
 #define TCL_BUFF_STR 3000				// standard Tcl buffer size (>1000)
@@ -112,6 +112,8 @@ Global definitions among all LSD C++ modules
 #define SENS_SEP " ,;|/#\t\n"			// sensitivity data valid separators
 #define USER_D_VARS 1000				// number of user double variables
 #define UPD_PER 0.2						// update period during simulation run in s
+#define SRV_MIN_CORES 12				// minimum number of cores to consider a server
+#define SRV_MAX_CORES 64				// maximum number of cores to use in a server
 
 // user defined signals
 #define SIGMEM NSIG + 1					// out of memory signal
@@ -142,6 +144,19 @@ Global definitions among all LSD C++ modules
 double ran1( long *idum_loc = NULL );
 #define RND ( ran1( ) )
 #endif
+
+// date/time format
+#define DATE_FMT "%d %B, %Y"
+
+// configuration files details
+#define LMM_OPTIONS "lmm_options.txt"
+#define SYSTEM_OPTIONS "system_options.txt"
+#define MODEL_OPTIONS "model_options.txt"
+#define GROUP_INFO "groupinfo.txt"
+#define MODEL_INFO "modelinfo.txt"
+#define DESCRIPTION "description.txt"
+#define LMM_OPTIONS_NUM 15
+#define MODEL_INFO_NUM 9
 
 using namespace std;
 
@@ -221,6 +236,7 @@ struct object
 	double multiply( char const *lab, double value );
 	double overall_max( char const *lab, int lag );
 	double overall_min( char const *lab, int lag );
+	double perc( char const *lab, int lag, double p );
 	double read_file_net( char const *lab, char const *dir = "", char const *base_name = "net", int serial = 1, char const *ext = "net" );
 	double recal( char const *l );
 	double sd( char const *lab, int lag );
@@ -622,6 +638,8 @@ bool discard_change( bool checkSense = true, bool senseOnly = false, const char 
 bool get_bool( const char *tcl_var, bool *var = NULL );
 bool is_equation_header( char *line, char *var, char *updt_in );
 bool load_description( char *msg, FILE *f );
+bool load_lmm_options( void );
+bool load_model_info( void );
 bool load_prev_configuration( void );
 bool open_configuration( object *&r, bool reload );
 bool save_configuration( int findex = 0 );
@@ -700,7 +718,8 @@ void create_table_init( object *r, FILE *frep );
 void dataentry_sensitivity( int *choice, sense *s, int nval = 0 );
 void deb_show( object *r );
 void delete_bridge( object *d );
-void draw_obj( object *t, object *sel, int level, int center, int from, bool zeroinst );
+void draw_buttons( void );
+void draw_obj( object *t, object *sel, int level = 0, int center = 0, int from = 0, bool zeroinst = false );
 void edit_data( object *root, int *choice, char *obj_name );
 void edit_str( object *root, char *tag, int counter, int *i, int res, int *num, int *choice, int *done );
 void eliminate_obj( object **r, int actual, int desired , int *choice );
@@ -746,8 +765,8 @@ void plot_rt( variable *var );
 void plot_tseries( int *choice );
 void prepare_plot( object *r, int id_sim );
 void print_stack( void );
-void put_line( int x1, int y1, int x2, int y2);
-void put_node( int x1, int y1, int x2, int y2, char *str, bool sel );
+void put_line( int x1, int y1, int x2 );
+void put_node( int x, int y, char *str, bool sel );
 void put_text( char *str, char *num, int x, int y, char *str2);
 void read_data( int *choice );
 void read_eq_filename( char *s );
@@ -810,6 +829,8 @@ void uncover_browser( void );
 void unload_configuration ( bool full );
 void unwind_stack( void );
 void update_bounds( void );
+void update_lmm_options( void );
+void update_model_info( void );
 void wipe_out( object *d );
 void write_list( FILE *frep, object *root, int flag_all, char const *prefix );
 void write_obj( object *r, FILE *frep );
@@ -895,6 +916,12 @@ extern object *wait_delete;		// LSD object waiting for deletion
 extern o_setT obj_list;			// list with all existing LSD objects
 extern sense *rsense;       	// LSD sensitivity analysis structure
 extern variable *cemetery;  	// LSD saved data series (from last simulation run )
+
+// constant string arrays
+extern const char *lmm_options[ ];
+extern const char *lmm_defaults[ ];
+extern const char *model_info[ ];
+extern const char *model_defaults[ ];
 
 // multi-threading control 
 #ifdef PARALLEL_MODE

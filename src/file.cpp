@@ -1,6 +1,6 @@
 /*************************************************************
 
-	LSD 7.2 - July 2019
+	LSD 7.2 - December 2019
 	written by Marco Valente, Universita' dell'Aquila
 	and by Marcelo Pereira, University of Campinas
 
@@ -337,6 +337,7 @@ bool object::load_struct( FILE *f )
 		{ 
 			fscanf( f, "%*[ ]%99s", ch );
 			add_obj( ch, 1, 0 );
+			cmd( "lappend modObj %s", ch );
 
 			// find the bridge which contains the object
 			cb = search_bridge( ch );
@@ -816,7 +817,7 @@ void unload_configuration ( bool full )
 	currObj = NULL;								// no current object pointer
 	unsaved_change( false );					// signal no unsaved change
 	cmd( "destroytop .lat" );					// remove lattice window
-	cmd( "unset -nocomplain modElem" );			// no elements in model structure
+	cmd( "unset -nocomplain modObj modElem modVar modPar modFun" );	// no elements in model structure
 	
 	if ( ! running )
 	{
@@ -1074,18 +1075,24 @@ int load_sensitivity( FILE *f )
 	
 	// error handling
 	error1:
+		if ( cv != NULL )
+			cmd( "tk_messageBox -parent . -title Error -icon error -type ok -message \"Invalid lag selected\" -detail \"Variable '%s' has no lags set.\"", lab );
 		i = 1;
 		goto error;
 	error2:
+		cmd( "tk_messageBox -parent . -title Error -icon error -type ok -message \"Invalid range\" -detail \"Element '%s' has less than two values to test.\"", lab );
 		i = 2;
 		goto error;
 	error3:
+		cmd( "tk_messageBox -parent . -title Error -icon error -type ok -message \"Invalid element type\" -detail \"Element '%s' has an invalid value set.\"", lab );
 		i = 3;
 		goto error;
 	error4:
+		cmd( "tk_messageBox -parent . -title Error -icon error -type ok -message \"Missing separator\" -detail \"Element '%s' has no separator character (':').\"", lab );
 		i = 4;
 		goto error;
 	error5:
+		cmd( "tk_messageBox -parent . -title Error -icon error -type ok -message \"Invalid range value\" -detail \"Element '%s' has non-numeric range values.\"", lab );
 		i = 5;
 		goto error;
 		

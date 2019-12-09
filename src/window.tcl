@@ -1,6 +1,6 @@
 #*************************************************************
 #
-#	LSD 7.2 - July 2019
+#	LSD 7.2 - December 2019
 #	written by Marco Valente, Universita' dell'Aquila
 #	and by Marcelo Pereira, University of Campinas
 #
@@ -57,39 +57,117 @@ if [ info exists alignMode ] {
 }
 
 # list of windows with predefined sizes & positions
-set wndLst [ list .lsd .lmm .log .str ]
+set wndLst [ list .lmm .lsd .log .str .da .deb .lat ]
+set wndMenuHeight 0
 
 # register static special, OS-dependent configurations
 if [ string equal $tcl_platform(platform) unix ] {
+	
+	# mac
 	if [ string equal $tcl_platform(os) Darwin ] {
-		if [ string equal [ info tclversion ] 8.6 ] {		
-			set butWid $butMacTk86
-		} {
-			set butWid $butMacTk85
+		
+		if { $MAC_PKG } {
+			set CurPlatform mac
+			set DefaultExe $exeMacPkg
+		} else {
+			set CurPlatform osx
+			set DefaultExe $exeMacOSX
 		}
+		
+		if { [ string equal [ info tclversion ] 8.6 ] } {	
+			if { [ string equal [ info patchlevel ] 8.6.9 ] } {
+				set butWid $butMacTk869
+			} else {
+				set butWid $butMac
+			}
+			
+			set DefaultWish $wishMacTk86
+		} else {
+			set butWid $butMac
+			set DefaultWish $wishMacTk85
+		}
+		
 		set daCwid $daCwidMac
 		set corrX $corrXmac
 		set corrY $corrYmac
 		
+		set DefaultSysTerm $sysTermMac
 		set systemTerm $sysTermMac
 		set gnuplotTerm $gnuplotTermMac
-	} {
+		set DefaultMakeExe $makeMac
+		set DefaultDbgExe $dbgMac
+		set DefaultHtmlBrowser $browserMac
+		set DefaultFont $fontMac
+		set DefaultFontSize $fontSizeMac
+		set deltaSize $deltaSizeMac
+		set bsizeM $bsizeMwin
+		set bhstepM $bhstepMwin
+		set bvstepM $bvstepMwin
+		
+	# linux
+	} else {
+
+		set CurPlatform linux
+		
 		set butWid $butLinux
 		set daCwid $daCwidLinux
 		set corrX $corrXlinux
 		set corrY $corrYlinux
 		
+		set DefaultSysTerm $sysTermLinux
 		set systemTerm $sysTermLinux
 		set gnuplotTerm $gnuplotTermLinux
+		set DefaultExe $exeLinux
+		set DefaultMakeExe $makeLinux
+		set DefaultWish $wishLinux
+		set DefaultDbgExe $dbgLinux
+		set DefaultHtmlBrowser $browserLinux
+		set DefaultFont $fontLinux
+		set DefaultFontSize $fontSizeLinux
+		set deltaSize $deltaSizeLinux
+		set bsizeM $bsizeMlin
+		set bhstepM $bhstepMlin
+		set bvstepM $bvstepMlin
 	}
-} {
+	
+# Windows
+} else {
+	
+	# Windows 32 or 64-bit?
+	if { [ string equal $tcl_platform(machine) intel ] } { 
+		set CurPlatform win32
+		set DefaultExe $exeWin32
+		set DefaultMakeExe $makeWin32
+		set DefaultWish $wishWinTk85
+	} else {
+		set CurPlatform win64
+		set DefaultExe $exeWin64
+		set DefaultWish $wishWinTk86
+		
+		# Cygwin or MSYS2?
+		if { [ catch { exec where cygwin1.dll } ] || [ catch { exec where cygintl-8.dll } ] } { 
+			set DefaultMakeExe $makeWin64mgw 
+		} else { 
+			set DefaultMakeExe $makeWin64cyg 
+		}
+	}
+	
 	set butWid $butWindows
 	set daCwid $daCwidWindows
 	set corrX $corrXwindows
 	set corrY $corrYwindows
 	
+	set DefaultSysTerm $sysTermWindows
 	set systemTerm $sysTermWindows
 	set gnuplotTerm $gnuplotTermWindows
+	set DefaultDbgExe $dbgWindows
+	set DefaultHtmlBrowser $browserWindows
+	set DefaultFont $fontWindows
+	set DefaultFontSize $fontSizeWindows
+	set deltaSize $deltaSizeWindows
+	set bsizeM $bsizeMwin
+	set bhstepM $bhstepMwin
+	set bvstepM $bvstepMwin
 }
 
 # text line default canvas height & minimum horizontal border width
@@ -165,8 +243,8 @@ image create photo resultImg -file "$RootLsd/$LsdSrc/icons/result.$iconExt"
 # Set global key mappings
 #************************************************
 proc setglobkeys { w { chkChg 1 } } {
-	global conWnd grabLst
-	global parWndLst logWndFn
+	global conWnd grabLst parWndLst logWndFn
+	
 	# soft/hard exit (check for unsaved changes or not)
 	if { $chkChg } {
 		bind $w <Control-Alt-x> { if [ string equal [ discard_change ] ok ] { exit }; break }
@@ -285,8 +363,6 @@ proc showtop { w { pos none } { resizeX no } { resizeY no } { grab yes } { sizeX
 	# copy of applied geometry, if any
 	set gm ""
 	
-	set doGrab 0
-	
 	#handle main windows differently
 	if { [ lsearch $wndLst $w ] < 0 } {
 	
@@ -329,10 +405,12 @@ proc showtop { w { pos none } { resizeX no } { resizeY no } { grab yes } { sizeX
 			}
 			
 			if { ! [ string equal "" $x ] && ! [ string equal "" $y ] } {
+			
 				if { [ string equal $pos coverW ] } {
 					set sizeX [ expr [ winfo width [ winfo parent $w ] ] + 10 ]
 					set sizeY [ expr [ winfo height [ winfo parent $w ] ] + 30 ]
 				}
+				
 				if { ! [ string equal $pos xy ]	&& $sizeX != 0 && $sizeY != 0 } {
 					set gm ${sizeX}x${sizeY}+$x+$y
 				} {
@@ -353,23 +431,13 @@ proc showtop { w { pos none } { resizeX no } { resizeY no } { grab yes } { sizeX
 		}
 		
 		wm resizable $w $resizeX $resizeY
-		
-		if { [ lsearch $noParLst [ string range $w 0 3 ] ] < 0 } {
-		
-			set parWndLst [ linsert $parWndLst 0 $w ]
-			
-			# postpone grab to make sure window is visible
-			if { $grab } {
-				set doGrab 1
-			}
-		}	
 	} {
 		#known windows - simply apply defaults if not done before
 		if { ! [ string equal $pos current ] } {
 			sizetop $w
 		}
 	}
-	
+
 	if { ! [ winfo viewable [ winfo toplevel $w ] ] } {
 		wm deiconify $w
 	}
@@ -378,10 +446,12 @@ proc showtop { w { pos none } { resizeX no } { resizeY no } { grab yes } { sizeX
 	focus $w
 	
 	update
-	
+
 	# grab focus, if required, updating the grabbing list
-	if { $doGrab } {
+	if { $grab && $w != "." && [ lsearch $noParLst [ string range $w 0 3 ] ] < 0 } {
 	
+		set parWndLst [ linsert $parWndLst 0 $w ]
+		
 		if { ! [ info exists grabLst ] || [ lsearch -glob $grabLst "$w *" ] < 0 } {
 			lappend grabLst "$w [ grab current $w ]"
 		}
@@ -414,9 +484,19 @@ proc showtop { w { pos none } { resizeX no } { resizeY no } { grab yes } { sizeX
 # DESTROYTOP
 #************************************************
 proc destroytop w {
-	global defaultFocus parWndLst grabLst noParLst logWndFn
+	global restoreWin wndLst defaultFocus parWndLst grabLst noParLst logWndFn
 
 	if { ! [ winfo exists $w ] } return
+	
+	# save main windows sizes/positions
+	if { $restoreWin && [ lsearch $wndLst $w ] >= 0 } {
+		set curGeom [ geomtosave $w ]
+		
+		if { $curGeom != "" } {
+			set wName [ string range $w 1 3 ]
+			set ::${wName}Geom $curGeom
+		}
+	}
 	
 	if { [ lsearch $noParLst [ string range $w 0 3 ] ] < 0 } {
 		if [ info exists grabLst ] {
@@ -453,52 +533,243 @@ proc destroytop w {
 
 
 #************************************************
+# GEOMTOP
+# Return REAL size & positions of a top window
+#************************************************
+proc geomtop { { w . } } {
+
+	# extract info from Tk/window manager
+	set geom [ wm geometry $w ]
+	scan $geom "%dx%d+%d+%d" width height decorationLeft decorationTop
+	set contentsTop [ winfo rooty $w ]
+	set contentsLeft [ winfo rootx $w ]
+	
+	# measure left edge, and assume all edges except top are the same thickness
+	set decorationThickness [ expr $contentsLeft - $decorationLeft ]
+
+	# find titlebar plus menubar thickness
+	set menubarThickness [ expr $contentsTop - $decorationTop ]
+	
+	# compute real values
+	incr width [ expr 2 * $decorationThickness ]
+	incr height $decorationThickness
+	incr height $menubarThickness
+	
+	return [ list $width $height $decorationLeft $decorationTop ]
+}
+	
+	
+#************************************************
+# GEOMTOSAVE
+# Return size & position of a window to be saved
+# and later reopened, at the same place/size
+#************************************************
+proc geomtosave { { w . } } {
+	global CurPlatform wndMenuHeight hfactM vfactM
+
+	# handle virtual top windows names
+	if { [ string equal $w .lmm ] || [ string equal $w .lsd ] } {
+		set realW .
+	} else {
+		set realW $w
+	}
+
+	if { ! [ winfo exists $realW ] } {
+		return ""
+	}
+	
+	set geom [ wm geometry $realW ]
+	scan $geom "%dx%d+%d+%d" width height decorationLeft decorationTop
+	set contentsLeft [ winfo rootx $realW ]
+	set contentsTop [ winfo rooty $realW ]
+	
+	# handle windows with incorrect size/position because of Tk ugly bugs in each platform
+	switch $CurPlatform {
+		linux {
+			set realHeight $height
+			set realX $contentsLeft
+	
+			switch $w {
+				.da -
+				.deb {
+					set realY [ expr $decorationTop + $contentsLeft - $decorationLeft + 8 ]
+				}
+				.lat {
+					set realY [ expr $decorationTop + $contentsLeft - $decorationLeft ]
+				}
+				default {
+					set realY [ expr $decorationTop + $contentsLeft - $decorationLeft - 2 ]
+				}
+			}
+		}
+		
+		mac -
+		osx {
+			set realX $decorationLeft
+			set realY $decorationTop
+			set realHeight [ expr $height + $contentsTop - $decorationTop - $wndMenuHeight ]
+		}
+		
+		win32 -
+		win64 {
+			set realX $decorationLeft
+			set realY $decorationTop
+	
+			switch $w {
+				.da -
+				.deb {
+					set realHeight [ expr $height + $contentsTop - $decorationTop - ( $wndMenuHeight + 20 ) ]
+				}
+				default {
+					set realHeight [ expr $height + $contentsTop - $decorationTop - $wndMenuHeight ]
+				}
+			}
+		}
+	}
+	
+	if { $w == ".str" } {
+		return ${width}x${realHeight}+${realX}+${realY}:${hfactM}+${vfactM}
+	} {
+		return ${width}x${realHeight}+${realX}+${realY}
+	}
+
+}
+
+
+#************************************************
+# CHECKGEOM
+# check for window mostly out of the (main) 
+# screen or invalid and use the default if needed
+#************************************************
+proc checkgeom { geom defGeom screenWidth screenHeight } {
+	global restoreWin hfactMmin vfactMmin
+	
+	if { ! $restoreWin || $geom == "#" } {
+		return $defGeom
+	} else {
+		set n [ scan $geom "%dx%d+%d+%d:%f+%f" width height decorationLeft decorationTop hScale vScale ]
+		
+		if { $n < 4 } {
+			return $defGeom
+		} else {
+			set centerX [ expr $decorationLeft + $width / 2 ]
+			set centerY [ expr $decorationTop + $height / 2 ]
+
+			if { $centerX < 0 || $centerX > $screenWidth || $centerY < 0 || $centerY > $screenHeight } {
+				return $defGeom
+			}
+			
+			if { $n == 6 && ( $hScale < $hfactMmin || $vScale < $vfactMmin ) } {
+				return $defGeom
+			}
+		}
+	}
+	
+	return $geom
+}
+
+
+#************************************************
 # SIZETOP
 # Adjust main windows to default size & positions
 #************************************************
 proc sizetop { { w all } } {
-	global wndLst hsizeB vsizeB hsizeL vsizeL hsizeLmin vsizeLmin bordsize hmargin vmargin tbarsize posXstr posYstr hsizeM vsizeM corrX corrY parWndLst grabLst logWndFn
+	global wndLst hsizeB vsizeB hsizeL vsizeL hsizeLmin vsizeLmin bordsize hmargin vmargin tbarsize posXstr posYstr hsizeM vsizeM corrX corrY parWndLst grabLst logWndFn lmmGeom lsdGeom logGeom strGeom daGeom debGeom latGeom hfactM vfactM wndMenuHeight
 
 	update
 	
+	if { [ string equal $w .lsd ] || [ string equal $w .lmm ] } {
+	
+		set realW .
+	
+		# save initial height of the top decoration (menu, title bar and border)
+		if { $wndMenuHeight == 0 } {
+			set curGeom [ wm geometry . ]
+			scan $curGeom "%dx%d+%d+%d" width height decorationLeft decorationTop
+			set contentsTop [ winfo rooty . ]
+			set wndMenuHeight [ expr $contentsTop - $decorationTop ]
+		}
+	} else {
+		set realW $w
+	}
+	
+	set screenWidth [ winfo screenwidth $realW ]
+	set screenHeight [ winfo screenheight $realW ]
+					
 	foreach wnd $wndLst {
 		if { ! [ string compare $w all ] || ! [ string compare $w $wnd ] } {
 		
 			switch $wnd {
+			
 				.lsd {
-					wm geometry . "${hsizeB}x$vsizeB+[ getx . topleftS ]+[ gety . topleftS ]"
+					set defGeom "${hsizeB}x$vsizeB+[ getx . topleftS ]+[ gety . topleftS ]"
+					wm geometry . [ checkgeom $lsdGeom $defGeom $screenWidth $screenHeight ]
 					wm minsize . $hsizeB [ expr $vsizeB / 2 ]
 				}
+				
 				.lmm {
-					if { [ expr [ winfo screenwidth . ] ] < ( $hsizeL + 2 * $bordsize ) } {
-						set W [ expr [winfo screenwidth . ] - 2 * $bordsize ] 
+					if { $screenWidth < ( $hsizeL + 2 * $bordsize ) } {
+						set W [ expr $screenWidth - 2 * $bordsize ] 
 					} {
 						set W $hsizeL
 					}
-					set H [ expr [ winfo screenheight . ] - $tbarsize - 2 * $vmargin - 2 * $bordsize ]
+					set H [ expr $screenHeight - $tbarsize - 2 * $vmargin - 2 * $bordsize ]
 					if { $H < $vsizeL } {
-						set H [ expr [ winfo screenheight . ] - $tbarsize - 2 * $bordsize ] 
+						set H [ expr $screenHeight - $tbarsize - 2 * $bordsize ] 
 					}
-					if { [ expr [ winfo screenwidth . ] ] < ( $hsizeL + 2 * $bordsize + $hmargin ) } {
+					if { $screenWidth < ( $hsizeL + 2 * $bordsize + $hmargin ) } {
 						set X 0
 					} {
-						set X [ expr [ winfo screenwidth . ] - $hmargin - $bordsize - $W ]
+						set X [ expr $screenWidth - $hmargin - $bordsize - $W ]
 					}
-					set Y [ expr ( [ winfo screenheight . ] - $tbarsize ) / 2 - $bordsize - $H / 2]
-					wm geom . "${W}x$H+$X+$Y"
+					set Y [ expr ( $screenHeight - $tbarsize ) / 2 - $bordsize - $H / 2 ]
+					
+					set defGeom "${W}x$H+$X+$Y"
+
+					wm geometry . [ checkgeom $lmmGeom $defGeom $screenWidth $screenHeight ]
 					wm minsize . $hsizeLmin $vsizeLmin
 				}
+				
 				.log {
-					set X [ getx .log bottomrightS ]
-					set Y [ gety .log bottomrightS ]
-					wm geom .log +$X+$Y
+					set defGeom "+[ getx .log bottomrightS ]+[ gety .log bottomrightS ]"
+					wm geometry .log [ checkgeom $logGeom $defGeom $screenWidth $screenHeight ]
 					wm minsize .log [ winfo width .log ] [ winfo height .log ]
 				}
+				
 				.str {
 					set posXstr [ expr [ winfo x . ] + [ winfo width . ] + 2 * $bordsize + $hmargin + $corrX ]
 					set posYstr [ expr [ winfo y . ] + $corrY ]
-					wm geometry .str ${hsizeM}x${vsizeM}+${posXstr}+${posYstr}	
+					set defGeom "${hsizeM}x${vsizeM}+${posXstr}+${posYstr}"
+
+					# handle the extra scaling parameters
+					set geom [ split [ checkgeom $strGeom $defGeom $screenWidth $screenHeight ] ":" ]
+					wm geometry .str [ lindex $geom 0 ]
+					if { [ lindex $geom 1 ] != "" } {
+						scan [ lindex $geom 1 ] "%f+%f" hfactM vfactM
+					}
+					
 					wm minsize .str [ expr $hsizeM / 2 ] [ expr $vsizeM / 2 ]	
+				}
+				
+				.da {
+					set defGeom "+[ getx .da overM ]+[ gety .da overM ]"
+					wm geometry .da [ checkgeom $daGeom $defGeom $screenWidth $screenHeight ]
+					wm minsize .da [ winfo width .da ] [ winfo height .da ]
+					wm resizable .da 0 1
+				}
+				
+				.deb {
+					set defGeom "+[ getx .deb topleftW ]+[ gety .deb topleftW ]"
+					wm geometry .deb [ checkgeom $debGeom $defGeom $screenWidth $screenHeight ]
+					wm minsize .deb [ winfo width .deb ] [ winfo height .deb ]
+					wm resizable .deb 0 1
+				}
+
+				.lat {
+					set defGeom "+[ getx .lat centerS ]+[ gety .lat centerS ]"
+					wm geometry .lat [ checkgeom $latGeom $defGeom $screenWidth $screenHeight ]
+					wm minsize .lat [ winfo width .lat ] [ winfo height .lat ]
+					wm resizable .lat 0 0
 				}
 			}
 		}
@@ -1398,12 +1669,13 @@ proc get_series { size data } {
 # Generic routine to convert a list into a bytearray
 #************************************************
 proc listToByteArray { valuetype list { elemsize 0 } } {
+
 	if { $valuetype == "i" || $valuetype == "I" } {
 		if { $::tcl_platform(byteOrder) == "littleEndian" } {
 			set valuetype "i"
-	   } {
+		} {
 			set valuetype "I"
-	   }
+		}
 	}
 
 	switch -- $valuetype {
@@ -1411,9 +1683,9 @@ proc listToByteArray { valuetype list { elemsize 0 } } {
 		   set result [ binary format ${valuetype}* $list ]
 		}
 		s {
-			set result {}
+			set result { }
 			foreach elem $list {
-			  append result [ binary format a$elemsize $elem ]
+				append result [ binary format a$elemsize $elem ]
 			}
 		}
 		default {
@@ -1424,23 +1696,24 @@ proc listToByteArray { valuetype list { elemsize 0 } } {
 	return $result
 }
 
+interp alias { } stringsToByteArray { } listToByteArray s
+interp alias { } intsToByteArray    { } listToByteArray i
+interp alias { } floatsToByteArray  { } listToByteArray f
+interp alias { } doublesToByteArray { } listToByteArray d
+
 
 #************************************************
 # BYTEARRAYTOLIST
 # Generic routine to convert a bytearray into a list
 #************************************************
-interp alias {} stringsToByteArray {} listToByteArray s
-interp alias {} intsToByteArray    {} listToByteArray i
-interp alias {} floatsToByteArray  {} listToByteArray f
-interp alias {} doublesToByteArray {} listToByteArray d
-
 proc byteArrayToList { valuetype bytearray { elemsize 0 } } {
+
 	if { $valuetype == "i" || $valuetype == "I" } {
-	   if { $::tcl_platform(byteOrder) == "littleEndian" } {
-		  set valuetype "i"
-	   } else {
-		  set valuetype "I"
-	   }
+		if { $::tcl_platform(byteOrder) == "littleEndian" } {
+			set valuetype "i"
+		} else {
+			set valuetype "I"
+		}
 	}
 
 	switch -- $valuetype {
@@ -1448,7 +1721,7 @@ proc byteArrayToList { valuetype bytearray { elemsize 0 } } {
 		   binary scan $bytearray ${valuetype}* result
 		}
 		s {
-			set result  {}
+			set result  { }
 			set length  [ string length $bytearray ]
 			set noelems [ expr { $length / $elemsize } ]
 			for { set i 0 } { $i < $noelems } { incr i } {
@@ -1470,10 +1743,10 @@ proc byteArrayToList { valuetype bytearray { elemsize 0 } } {
 	return $result
 }
 
-interp alias {} byteArrayToStrings {} byteArrayToList s
-interp alias {} byteArrayToInts    {} byteArrayToList i
-interp alias {} byteArrayToFloats  {} byteArrayToList f
-interp alias {} byteArrayToDoubles {} byteArrayToList d
+interp alias { } byteArrayToStrings { } byteArrayToList s
+interp alias { } byteArrayToInts    { } byteArrayToList i
+interp alias { } byteArrayToFloats  { } byteArrayToList f
+interp alias { } byteArrayToDoubles { } byteArrayToList d
 
 
 #************************************************
@@ -1591,7 +1864,7 @@ proc init_canvas_colors { } {
 	}
 	set ::c$i white
 	
-	# fill the colors 1001-1100 with gray shades
+	# fill the colors 1000-1099 with gray shades
 	for { set j 0 } { $j < 10 } { incr j } {
 		for { set k 0 } { $k < 10 } { incr k; incr i } {
 			if { ! ( $j == 0 && $k == 0 ) } {
@@ -1625,6 +1898,26 @@ proc update_title_bar { } {
 		set tosave 0
 		wm title . "  $filename - LMM"
 	}
+}
+
+
+#************************************************
+# ROUND_N
+# Round float to N decimal positions
+#************************************************
+proc round_N { float N } {
+	return [ expr round( $float * pow( 10, $N ) ) / pow( 10, $N ) ]
+}
+
+
+#************************************************
+# CURRENT_DATE
+# Current date in the default date format
+#************************************************
+proc current_date { } {
+	global DATE_FMT
+	
+	return [ clock format [ clock seconds ] -format $DATE_FMT ]
 }
 
 

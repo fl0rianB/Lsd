@@ -1,6 +1,6 @@
 /*************************************************************
 
-	LSD 7.2 - July 2019
+	LSD 7.2 - December 2019
 	written by Marco Valente, Universita' dell'Aquila
 	and by Marcelo Pereira, University of Campinas
 
@@ -2255,12 +2255,33 @@ Compute the median of lab
 ****************************************************/
 double object::med( char const *lab, int lag )
 {
-	int n;
+	return perc( lab, lag, 0.5 );
+}
+
+
+/****************************************************
+PERC (*)
+Compute the percentile p of lab
+****************************************************/
+double object::perc( char const *lab, int lag, double p )
+{
+	int n, floor_x;
+	double x, vx, vx1, tmp;
 	object *cur;
 	variable *cv;
 	vector < double > vals;
+	
+	if ( p < 0 || p > 1 )
+	{
+		sprintf( msg, "percentile '%g' is invalid", p );
+		error_hard( msg, "invalid value (0 <= p <= 1 required)", 
+					"check your equation code to prevent this situation",
+					true );
 
-	cv = search_var_err( this, lab, no_search, true, "calculating median" );
+		return NAN;
+	}
+
+	cv = search_var_err( this, lab, no_search, true, "calculating percentile" );
 	if ( cv == NULL )
 		return NAN;
 
@@ -2268,6 +2289,7 @@ double object::med( char const *lab, int lag )
 	if ( cur->up != NULL )
 		cur = ( cur->up )->search( cur->label );
 
+	// copy selected data series to vector
 	for ( n = 0; cur != NULL; cur = go_brother( cur ), ++n )
 		vals.push_back( cur->cal( this, lab, lag ) );
 
@@ -2275,10 +2297,13 @@ double object::med( char const *lab, int lag )
 	{
 		sort( vals.begin( ), vals.end( ) );
 		
-		if ( n % 2 == 0 )
-			return ( vals[ n / 2 - 1 ] + vals[ n / 2 ] ) / 2;
-		else
-			return vals[ n / 2 ];
+		// compute using the C=1 variant a la NumPy
+		x = p * ( n - 1 ) + 1;
+		floor_x = floor( x );
+		vx = vals[ floor_x - 1 ];
+		vx1 = floor_x < n ? vals[ floor_x ] : vx;
+		
+		return vx + modf( x, &tmp ) * ( vx1 - vx );
 	}
 	else
 		return NAN;
@@ -3012,7 +3037,7 @@ double object::write( char const *lab, double value, int time, int lag )
 		// choose next update step for special updating variables
 		if ( cv->delay > 0 || cv->delay_range > 0 )
 		{
-			cv->next_update = 1 + cv->delay;
+			cv->next_update = cv->delay;
 			if ( cv->delay_range > 0 )
 				cv->next_update += rnd_int( 0, cv->delay_range );
 		}

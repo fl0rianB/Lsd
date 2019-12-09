@@ -1,6 +1,6 @@
 /*************************************************************
 
-	LSD 7.2 - July 2019
+	LSD 7.2 - December 2019
 	written by Marco Valente, Universita' dell'Aquila
 	and by Marcelo Pereira, University of Campinas
 
@@ -75,7 +75,7 @@ object *initParent = NULL;			// parent of new variable initial setting
 
 
 // list of choices that are bad with existing run data
-int badChoices[ ] = { 1, 2, 3, 6, 7, 19, 21, 22, 25, 27, 28, 30, 31, 32, 33, 36, 43, 57, 58, 59, 62, 63, 64, 65, 68, 69, 71, 72, 74, 75, 76, 77, 78, 79, 80, 81, 83, 88, 90, 91, 92, 93, 94, 95, 96 };
+int badChoices[ ] = { 1, 2, 3, 6, 7, 19, 21, 22, 27, 28, 30, 31, 32, 33, 36, 43, 57, 58, 59, 62, 63, 64, 65, 68, 69, 71, 72, 74, 75, 76, 77, 78, 79, 80, 81, 83, 88, 90, 91, 92, 93, 94, 95, 96 };
 #define NUM_BAD_CHOICES ( sizeof( badChoices ) / sizeof( badChoices[ 0 ] ) )
 
 // list of choices that are run twice (called from another choice)
@@ -722,7 +722,7 @@ int browse( object *r, int *choice )
 			}" );
 
 		// navigation (top) panel
-		cmd( "frame .l.p -relief groove -bd 2" );
+		cmd( "frame .l.p" );
 
 		cmd( "frame .l.p.up_name" );
 		cmd( "label .l.p.up_name.d -text \"Parent object:\" -width 12 -anchor w" );
@@ -923,7 +923,7 @@ int browse( object *r, int *choice )
 
 			// Button bar
 			cmd( "destroy .bbar" );
-			cmd( "frame .bbar -bd 2" );
+			cmd( "frame .bbar" );
 
 			cmd( "button .bbar.open -image openImg -relief $bRlf -overrelief $ovBrlf -command {set choice 17}" );
 			cmd( "button .bbar.reload -image reloadImg -relief $bRlf -overrelief $ovBrlf -command {set choice 38}" );
@@ -988,8 +988,12 @@ int browse( object *r, int *choice )
 
 	main_cycle:
 	
-	// update element list removing duplicates and sorting
+	// update element lists removing duplicates and sorting
+	cmd( "if [ info exists modObj ] { set modObj [ lsort -dictionary -unique $modObj ] }" );
 	cmd( "if [ info exists modElem ] { set modElem [ lsort -dictionary -unique $modElem ] }" );
+	cmd( "if [ info exists modVar ] { set modVar [ lsort -dictionary -unique $modVar ] }" );
+	cmd( "if [ info exists modPar ] { set modPar [ lsort -dictionary -unique $modPar ] }" );
+	cmd( "if [ info exists modFun ] { set modFun [ lsort -dictionary -unique $modFun ] }" );
 
 	// restore correct selection on list boxes
 	cmd( "if { $listfocus == 1 } { \
@@ -1113,7 +1117,7 @@ object *operate( object *r, int *choice )
 {
 bool saveAs, delVar, renVar, table;
 char observe, initial, *lab1, *lab2, *lab3, *lab4, lab[ TCL_BUFF_STR ], lab_old[ 2 * MAX_PATH_LENGTH ], ch[ 2 * MAX_PATH_LENGTH ], out_file[ MAX_PATH_LENGTH ], out_dir[ MAX_PATH_LENGTH ], out_bat[ MAX_PATH_LENGTH ], win_dir[ MAX_PATH_LENGTH ];
-int sl, done = 0, num, i, j, param, save, plot, nature, numlag, k, lag, fSeq, ffirst, fnext, temp[ 10 ];
+int sl, done = 0, num, i, j, k, param, save, plot, nature, numlag, lag, fSeq, ffirst, fnext, temp[ 10 ];
 long nLinks;
 double fake = 0;
 FILE *f;
@@ -1135,6 +1139,15 @@ else
 
 switch ( *choice )
 {
+
+// Exit LSD
+case 11:
+
+	if ( discard_change( ) )	// unsaved configuration changes ?
+		myexit( 0 );
+	
+break;
+
 
 // Add a Variable to the current or the pointed object (defined in tcl $vname)
 case 2:
@@ -1206,7 +1219,7 @@ case 2:
 					set s [ .addelem.f.ent_var get ]; \
 					.addelem.d.f.text insert end \"[ get_var_descr $s ]\"; \
 				}" );
-			cmd( "bind $T.f.ent_var <KeyPress-Return> { if { [ .addelem.f.ent_num get ] > 0 } { focus $T.b.x } { focus $T.b.ok } }" );
+			cmd( "bind $T.f.ent_var <KeyPress-Return> { event generate .addelem.f.ent_var <<ComboboxSelected>>; if { [ .addelem.f.ent_num get ] > 0 } { focus $T.b.x } { focus $T.b.ok } }" );
 			cmd( "bind $T.f.ent_num <KeyPress-Return> { if { [ .addelem.f.ent_num get ] > 0 } { focus $T.b.x } { focus $T.b.ok } }" );
 			cmd( "set help menumodel.html#AddAVar");
 			break;
@@ -1240,7 +1253,7 @@ case 2:
 					.addelem.d.f.text insert end \"[ get_var_descr $s ]\"; \
 				}" );
 			cmd( "set help menumodel.html");
-			cmd( "bind $T.f.ent_var <KeyPress-Return> { focus $T.b.ok }" );
+			cmd( "bind $T.f.ent_var <KeyPress-Return> { event generate .addelem.f.ent_var <<ComboboxSelected>>; focus $T.b.ok }" );
 
 			break;
 
@@ -1280,13 +1293,13 @@ case 2:
 
 	cmd( "set w $T.d" );
 	cmd( "frame $w" );
-	cmd( "frame $w.f -bd 2 -relief groove" );
-	cmd( "label $w.f.lab -text \"Description\"" );
+	cmd( "label $w.lab -text \"Description\"" );
+	cmd( "frame $w.f" );
 	cmd( "scrollbar $w.f.yscroll -command \"$w.f.text yview\"" );
 	cmd( "text $w.f.text -undo 1 -wrap word -width 60 -height 6 -relief sunken -yscrollcommand \"$w.f.yscroll set\" -font \"$font_small\"" );
 	cmd( "pack $w.f.yscroll -side right -fill y" );
-	cmd( "pack $w.f.lab $w.f.text -expand yes -fill both" );
-	cmd( "pack $w.f" );
+	cmd( "pack $w.f.text -expand yes -fill both" );
+	cmd( "pack $w.lab $w.f" );
 
 	cmd( "pack $T.l $T.f $T.d -pady 5" );
 	
@@ -1338,15 +1351,26 @@ case 2:
 			if ( done == 0 )
 			{
 				cmd( "set text_description [ .addelem.d.f.text get 1.0 end ]" );
-				cmd( "if { $text_description==\"\\n\" } {set text_description \"(no description available)\" }" );
+				cmd( "if { $text_description==\"\\n\" } { set text_description \"(no description available)\" }" );
 				lab1 = ( char * ) Tcl_GetVar( inter, "text_description", 0 );
 				if ( param == 1 )
+				{
 					add_description( lab, "Parameter", lab1 );
+					cmd( "lappend modPar %s", lab );
+				}
 				if ( param == 0 )
+				{
 					add_description( lab, "Variable", lab1 );
+					cmd( "lappend modVar %s", lab );
+				}
 				if ( param == 2 )
+				{
 					add_description( lab, "Function", lab1 );
+					cmd( "lappend modFun %s", lab );
+				}
 				
+				cmd( "lappend modElem %s", lab );
+
 				for ( cur = r; cur != NULL; cur = cur->hyper_next( cur->label ) )
 				{ 
 					cv = cur->add_empty_var( lab );
@@ -1370,7 +1394,6 @@ case 2:
 				
 				// update focus memory
 				cmd( "set listfocus 1; set itemfocus [ .l.v.c.var_name index end ]" );
-				cmd( "lappend modElem %s }", lab );
 				struct_loaded = true;		// some model structure loaded
 				unsaved_change( true );		// signal unsaved change
 				redrawRoot = true;			// force browser redraw
@@ -1454,13 +1477,13 @@ case 3:
 
 	cmd( "set w $T.d" );
 	cmd( "frame $w" );
-	cmd( "frame $w.f -bd 2 -relief groove" );
-	cmd( "label $w.f.lab -text \"Description\"" );
+	cmd( "label $w.lab -text \"Description\"" );
+	cmd( "frame $w.f" );
 	cmd( "scrollbar $w.f.yscroll -command \"$w.f.text yview\"" );
 	cmd( "text $w.f.text -undo 1 -wrap word -width 60 -height 6 -relief sunken -yscrollcommand \"$w.f.yscroll set\" -font \"$font_small\"" );
 	cmd( "pack $w.f.yscroll -side right -fill y" );
-	cmd( "pack $w.f.lab $w.f.text -expand yes -fill both" );
-	cmd( "pack $w.f" );
+	cmd( "pack $w.f.text -expand yes -fill both" );
+	cmd( "pack $w.lab $w.f" );
 
 	cmd( "pack $T.l $T.f $w -pady 5" );
 	cmd( "okhelpcancel $T b { set done 1 } { LsdHelp menumodel.html#AddADesc } { set done 2 }" );
@@ -1504,6 +1527,7 @@ case 3:
 		cmd( "if { $text_description==\"\\n\" || $text_description==\"\"} {set text_description \"(no description available)\"} {}" );
 		lab1 = ( char * ) Tcl_GetVar( inter, "text_description", 0 );
 		add_description( lab, "Object", lab1 );
+		cmd( "lappend modObj %s", lab );
 		
 		// update focus memory
 		cmd( "set listfocus 2; set itemfocus [ .l.s.c.son_name index end ]; set itemfirst [ lindex [ .l.s.c.son_name yview ] 0 ]" );
@@ -1576,13 +1600,13 @@ case 32:
 
 	cmd( "set w $T.d" );
 	cmd( "frame $w" );
-	cmd( "frame $w.f -bd 2 -relief groove" );
-	cmd( "label $w.f.lab -text \"Description\"" );
+	cmd( "label $w.lab -text \"Description\"" );
+	cmd( "frame $w.f" );
 	cmd( "scrollbar $w.f.yscroll -command \"$w.f.text yview\"" );
 	cmd( "text $w.f.text -undo 1 -wrap word -width 60 -height 6 -relief sunken -yscrollcommand \"$w.f.yscroll set\" -font \"$font_small\"" );
 	cmd( "pack $w.f.yscroll -side right -fill y" );
-	cmd( "pack $w.f.lab $w.f.text -expand yes -fill both" );
-	cmd( "pack $w.f" );
+	cmd( "pack $w.f.text -expand yes -fill both" );
+	cmd( "pack $w.lab $w.f" );
 
 	cmd( "pack $T.l $T.f $w -pady 5" );
 	cmd( "okhelpcancel $T b { set done 1 } { LsdHelp menumodel.html#InsertAParent } { set done 2 }" );
@@ -1625,10 +1649,11 @@ case 32:
 			r = r->up;
 	}
 
-	cmd( "set text_description [.inspar.d.f.text get 1.0 end]" );  
-	cmd( "if { $text_description==\"\\n\" || $text_description==\"\"} {set text_description \"(no description available)\"} {}" );
+	cmd( "set text_description [ .inspar.d.f.text get 1.0 end ]" );  
+	cmd( "if { $text_description==\"\\n\" || $text_description==\"\" } { set text_description \"(no description available)\" }" );
 	lab1 = ( char * ) Tcl_GetVar( inter, "text_description", 0 );
 	add_description( lab, "Object", lab1 );
+	cmd( "lappend modObj %s", lab );
 
 	unsaved_change( true );		// signal unsaved change
 	redrawRoot = true;			// force browser redraw
@@ -1739,12 +1764,12 @@ case 6:
 	cmd( "set w $T.desc" );
 
 	cmd( "frame $w" );
-	cmd( "frame $w.f -bd 2 -relief groove" );
-	cmd( "label $w.f.int -text \"Description\"" );
+	cmd( "label $w.int -text \"Description\"" );
+	cmd( "frame $w.f" );
 	cmd( "scrollbar $w.f.yscroll -command \"$w.f.text yview\"" );
 	cmd( "text $w.f.text -undo 1 -wrap word -width 60 -height 10 -relief sunken -yscrollcommand \"$w.f.yscroll set\" -font \"$font_small\"" );
 	cmd( "pack $w.f.yscroll -side right -fill y" );
-	cmd( "pack $w.f.int $w.f.text -anchor w -expand yes -fill both" );
+	cmd( "pack $w.f.text -anchor w -expand yes -fill both" );
 
 	for ( i = 0; cur_descr->text[ i ] != ( char ) NULL; ++i )
 		if ( cur_descr->text[ i ] != '[' && cur_descr->text[ i ] != ']' && cur_descr->text[ i ] != '{' && cur_descr->text[ i ] != '}' && cur_descr->text[ i ] != '\"' && cur_descr->text[ i ] != '\\' )
@@ -1753,7 +1778,7 @@ case 6:
 			cmd( "$w.f.text insert end \"\\%c\"", cur_descr->text[ i ] );
 
 	cmd( "$w.f.text delete \"end - 1 char\"" );
-	cmd( "pack $w.f -fill x -expand yes" );
+	cmd( "pack $w.int $w.f -fill x -expand yes" );
 
 	cmd( "pack $T.h $T.b0 $T.b1 $w -pady 5" );
 
@@ -1999,7 +2024,89 @@ case 7:
 	cmd( "pack $T.h.o.l $T.h.o.obj -side left -padx 2" );
 
 	cmd( "pack $T.h.l $T.h.o" );
-
+	
+	if ( cv->num_lag > 0 || cv->param == 1 )
+	{
+		cmd( "frame $T.h.i" );
+		cmd( "label $T.h.i.l -text \"Initial value%s%s:\"", cv->num_lag > 1 ? "s" : "", cv->up->next == NULL ? "" : " (first instance)" );
+		
+		if ( cv->data_loaded != '-' )
+		{
+			char widget[ 20 ], widgets[ 4 * 20 ];
+			strcpy ( widgets, "" );
+			
+			j = ( cv->param == 1 ) ? 1 : min( cv->num_lag, 4 );
+			for ( i = 0; i < j; ++i )
+			{
+				cmd( "frame $T.h.i.v%d", i );
+				cmd( "label $T.h.i.v%d.val -fg red -text \"%g\"", i, cv->val[ i ] );
+				
+				if ( j > 1 )
+				{
+					cmd( "label $T.h.i.v%d.lag -text \"(%d)\"", i, i + 1 );
+					cmd( "pack $T.h.i.v%d.val $T.h.i.v%d.lag -side left", i, i );
+				}
+				else
+					cmd( "pack $T.h.i.v%d.val", i );
+				
+				sprintf( widget, " $T.h.i.v%d", i );
+				strcat( widgets, widget );
+			}
+			
+			cmd( "pack $T.h.i.l %s -side left -padx 1", widgets );
+		}
+		else
+		{
+			cmd( "label $T.h.i.val -fg red -text \"(uninitialized)\"" );
+			cmd( "pack $T.h.i.l $T.h.i.val -side left -padx 2" );
+		}
+		
+		cmd( "pack $T.h.i" );
+	}
+	
+	if ( cv->param == 0 && ( cv->delay > 0 || cv->delay_range > 0 || cv->period > 1 || cv->period_range > 1 ) )
+	{
+		cmd( "frame $T.h.u" );
+		
+		if ( cv->delay > 0 )
+		{
+			cmd( "frame $T.h.u.d" );
+			cmd( "label $T.h.u.d.l -text \"Initial updating delay:\"" );
+			cmd( "label $T.h.u.d.v -fg red -text \"%d\"", cv->delay );
+			cmd( "pack $T.h.u.d.l $T.h.u.d.v -side left -padx 2" );
+			cmd( "pack $T.h.u.d" );
+		}
+		
+		if ( cv->delay_range > 0 )
+		{
+			cmd( "frame $T.h.u.dr" );
+			cmd( "label $T.h.u.dr.l -text \"Random updating delay range:\"" );
+			cmd( "label $T.h.u.dr.v -fg red -text \"%d\"", cv->delay_range );
+			cmd( "pack $T.h.u.dr.l $T.h.u.dr.v -side left -padx 2" );
+			cmd( "pack $T.h.u.dr" );
+		}
+		
+		if ( cv->period > 1 )
+		{
+			cmd( "frame $T.h.u.p" );
+			cmd( "label $T.h.u.p.l -text \"Updating period:\"" );
+			cmd( "label $T.h.u.p.v -fg red -text \"%d\"", cv->period );
+			cmd( "pack $T.h.u.p.l $T.h.u.p.v -side left -padx 2" );
+			cmd( "pack $T.h.u.p" );
+		}
+		
+		if ( cv->period_range > 1 )
+		{
+			cmd( "frame $T.h.u.pr" );
+			cmd( "label $T.h.u.pr.l -text \"Random updating period range:\"" );
+			cmd( "label $T.h.u.pr.v -fg red -text \"%d\"", cv->period_range );
+			cmd( "pack $T.h.u.pr.l $T.h.u.pr.v -side left -padx 2" );
+			cmd( "pack $T.h.u.pr" );
+		}
+		
+		cmd( "pack $T.h.u" );			
+	}
+	
 	cmd( "frame $T.b0" );
 	cmd( "button $T.b0.prop -width $butWid -text Properties -command { set done 5 } -underline 1" );
 	cmd( "button $T.b0.upd -width $butWid -text Updating -command { set done 14 } -underline 7" );
@@ -2060,21 +2167,24 @@ case 7:
 	else
 		cmd( "pack $Td.opt.l $Td.opt.obs -side left" );
 
-	cmd( "frame $Td.f -bd 2 -relief groove" );
+	cmd( "frame $Td.f" );
 	cmd( "label $Td.f.int -text \"Description\"" );
 
-	cmd( "scrollbar $Td.f.yscroll -command \"$Td.f.text yview\"" );
-	cmd( "text $Td.f.text -undo 1 -wrap word -width 60 -height 8 -relief sunken -yscrollcommand \"$Td.f.yscroll set\" -font \"$font_small\"" );
-	cmd( "pack $Td.f.yscroll -side right -fill y" );
-	cmd( "pack $Td.f.int $Td.f.text -anchor w -expand yes -fill both" );
-
+	cmd( "frame $Td.f.desc" );
+	cmd( "scrollbar $Td.f.desc.yscroll -command \"$Td.f.desc.text yview\"" );
+	cmd( "text $Td.f.desc.text -undo 1 -wrap word -width 60 -height 8 -relief sunken -yscrollcommand \"$Td.f.desc.yscroll set\" -font \"$font_small\"" );
+	cmd( "pack $Td.f.desc.yscroll -side right -fill y" );
+	cmd( "pack $Td.f.desc.text -anchor w -expand yes -fill both" );
+	
 	for ( i = 0; cur_descr->text[ i ] != '\0'; ++i )
 		if ( cur_descr->text[ i ] != '[' && cur_descr->text[ i ] != ']' && cur_descr->text[ i ] != '{' && cur_descr->text[ i ] != '}' && cur_descr->text[ i ] != '\"' && cur_descr->text[ i ] != '\\')
-			cmd( "$Td.f.text insert end \"%c\"", cur_descr->text[ i ] );
+			cmd( "$Td.f.desc.text insert end \"%c\"", cur_descr->text[ i ] );
 		else
-			cmd( "$Td.f.text insert end \"\\%c\"", cur_descr->text[ i ] );
+			cmd( "$Td.f.desc.text insert end \"\\%c\"", cur_descr->text[ i ] );
 
-	cmd( "$Td.f.text delete \"end - 1 char\"" );
+	cmd( "$Td.f.desc.text delete \"end - 1 char\"" );
+
+	cmd( "pack $Td.f.int $Td.f.desc" );
 
 	cmd( "frame $Td.b" );
 	cmd( "button $Td.b.eq -width [ expr $butWid + 3 ] -text \"View Code\" -command {set done 3} -underline 3" );
@@ -2093,22 +2203,27 @@ case 7:
 
 	if ( cv->param == 1 || cv->num_lag > 0 )
 	{
-		cmd( "frame $Td.i -bd 2 -relief groove" );
+		cmd( "frame $Td.i" );
 		cmd( "label $Td.i.int -text \"Comments on initial values\"" );
-		cmd( "scrollbar $Td.i.yscroll -command \"$Td.i.text yview\"" );
-		cmd( "text $Td.i.text -undo 1 -wrap word -width 60 -height 3 -relief sunken -yscrollcommand \"$Td.i.yscroll set\" -font \"$font_small\"" );
-		cmd( "pack $Td.i.yscroll -side right -fill y" );
-		if (cur_descr->init != NULL )
+
+		cmd( "frame $Td.i.desc" );
+		cmd( "scrollbar $Td.i.desc.yscroll -command \"$Td.i.desc.text yview\"" );
+		cmd( "text $Td.i.desc.text -undo 1 -wrap word -width 60 -height 3 -relief sunken -yscrollcommand \"$Td.i.desc.yscroll set\" -font \"$font_small\"" );
+		cmd( "pack $Td.i.desc.yscroll -side right -fill y" );
+		cmd( "pack $Td.i.desc.text -anchor w -expand yes -fill both" );
+
+		if ( cur_descr->init != NULL )
 		{
 			for ( i = 0; cur_descr->init[ i ] != '\0'; ++i )
 				if ( cur_descr->init[ i ] != '[' && cur_descr->init[ i ] != ']' && cur_descr->init[ i ] != '{' && cur_descr->init[ i ] != '}' && cur_descr->init[ i ] != '\"' && cur_descr->text[ i ] != '\\')
-					cmd( "$Td.i.text insert end \"%c\"", cur_descr->init[ i ] );
+					cmd( "$Td.i.desc.text insert end \"%c\"", cur_descr->init[ i ] );
 				else
-					cmd( "$Td.i.text insert end \"\\%c\"", cur_descr->init[ i ] );
+					cmd( "$Td.i.desc.text insert end \"\\%c\"", cur_descr->init[ i ] );
 	  
-			cmd( "$Td.i.text delete \"end - 1 char\"" );
+			cmd( "$Td.i.desc.text delete \"end - 1 char\"" );
 		}
-		cmd( "pack $Td.i.int $Td.i.text -anchor w -expand yes -fill both" );
+		
+		cmd( "pack $Td.i.int $Td.i.desc" );
 	  
 		cmd( "frame $Td.b2" );
 		cmd( "button $Td.b2.setall -width [ expr $butWid + 3 ] -text \"Initial Values\" -command { set done 11 } -underline 1" );
@@ -2157,19 +2272,19 @@ case 7:
 
 	if ( done == 9 ) 
 	{
-		cmd( "set text_description \"[ .chgelem.desc.f.text get 1.0 end ]\"" );
+		cmd( "set text_description \"[ .chgelem.desc.f.desc.text get 1.0 end ]\"" );
 		change_descr_text( lab_old );
 	  
 		auto_document( choice, lab_old, "ALL", true );
-		cmd( ".chgelem.desc.f.text delete 1.0 end" );
+		cmd( ".chgelem.desc.f.desc.text delete 1.0 end" );
 
 		for ( i = 0; cur_descr->text[ i ] != '\0'; ++i )
 			if ( cur_descr->text[ i ] != '[' && cur_descr->text[ i ] != ']' && cur_descr->text[ i ] != '{' && cur_descr->text[ i ] != '}' && cur_descr->text[ i ] != '\"' && cur_descr->text[ i ] != '\\')
-				cmd( ".chgelem.desc.f.text insert end \"%c\"", cur_descr->text[ i ] );
+				cmd( ".chgelem.desc.f.desc.text insert end \"%c\"", cur_descr->text[ i ] );
 			else
-				cmd( ".chgelem.desc.f.text insert end \"\\%c\"", cur_descr->text[ i ] );
+				cmd( ".chgelem.desc.f.desc.text insert end \"\\%c\"", cur_descr->text[ i ] );
 		  
-		cmd( ".chgelem.desc.f.text delete \"end - 1 char\"" );
+		cmd( ".chgelem.desc.f.desc.text delete \"end - 1 char\"" );
 		unsaved_change( true );		// signal unsaved change
 	}
 
@@ -2201,11 +2316,11 @@ case 7:
 		   cv->observe = ( observe == 'y' ) ? true : false;
 		}
 		  
-		cmd( "set text_description \"[.chgelem.desc.f.text get 1.0 end]\"" );
+		cmd( "set text_description \"[.chgelem.desc.f.desc.text get 1.0 end]\"" );
 		change_descr_text( lab_old );
 		if ( cv->param == 1 || cv->num_lag > 0 )
 		{
-			cmd( "set text_description \"[.chgelem.desc.i.text get 1.0 end]\"" );
+			cmd( "set text_description \"[.chgelem.desc.i.desc.text get 1.0 end]\"" );
 			change_init_text( lab_old );
 		}
 	  
@@ -2417,13 +2532,23 @@ case 76:
 			}
 		}
 		
-		// remove from element list
+		// remove from element lists
 		cmd( "if [ info exists modElem ] { set pos [ lsearch -exact $modElem %s ]; if { $pos >= 0 } { set modElem [ lreplace $modElem $pos $pos ] } }", lab_old  );
+		cmd( "if [ info exists modPar ] { set pos [ lsearch -exact $modPar %s ]; if { $pos >= 0 } { set modPar [ lreplace $modPar $pos $pos ] } }", lab_old  );
+		cmd( "if [ info exists modVar ] { set pos [ lsearch -exact $modVar %s ]; if { $pos >= 0 } { set modVar [ lreplace $modVar $pos $pos ] } }", lab_old  );
+		cmd( "if [ info exists modFun ] { set pos [ lsearch -exact $modFun %s ]; if { $pos >= 0 } { set modFun [ lreplace $modFun $pos $pos ] } }", lab_old  );
 
 		if ( ! delVar )
 		{
 			// add to element lists
 			cmd( "lappend modElem %s", lab );
+			
+			if ( cv->param == 0 )
+				cmd( "lappend modVar %s", lab );
+			if ( cv->param == 1 )
+				cmd( "lappend modPar %s", lab );
+			if ( cv->param == 2 )
+				cmd( "lappend modFun %s", lab );
 			
 			change_descr_lab( lab_old, lab, "", "", "" );
 		}
@@ -2978,15 +3103,6 @@ case 1:
 	return n;
 
 
-// Exit LSD
-case 11:
-
-	if ( discard_change( ) )	// unsaved configuration changes ?
-		myexit( 0 );
-	
-break;
-
-
 // Load a model
 case 17:
 // Reload model
@@ -3278,13 +3394,23 @@ case 22:
 break;
 
 
-// Move browser to Object pointed on the graphical model map
+// Move browser to Object pointed on the graphical model structure map
 case 24:
 
 	if ( res_g == NULL )
 		break;
 
 	n = root->search( res_g );
+	*choice = 0;
+
+	if ( n == NULL )
+	{	// check if it is not a zero-instance object
+		n = blueprint->search( res_g );
+		if ( n != NULL )
+			cmd( "tk_messageBox -parent . -title Warning -icon warning -type ok -message \"Cannot show no-instance object\" -detail \"All instances of '%s' were deleted.\nSelect another object or reload your configuration and try again.\"", res_g );
+
+		break;
+	}
 
 	if ( n != r )
 	{
@@ -3292,23 +3418,11 @@ case 24:
 		cmd( "set listfocus 1; set itemfocus 0" ); // point for first var in listbox
 	}
 
-	*choice = 0;
 	return n;
 
 
-// Edit initial values of Objects pointed on the graphical map (NOT USED)
+// NOT USED
 case 25:
-
-	if (res_g == NULL )
-	  break;
-
-	r = root->search( res_g );
-
-	*choice = 0;
-	edit_data( root, choice, r->label );
-	cmd( "destroytop .ini" );
-
-	unsaved_change( true );		// signal unsaved change
 
 break;
 
@@ -3655,15 +3769,6 @@ case 34:
 
 	if ( cur2 != NULL )			// restore original current object
 		r = cur2;
-
-break;
-
-
-// Window destroyed
-case 35:
-
-	if ( discard_change( ) )	// check for unsaved configuration changes
-		myexit( 0 );
 
 break;
 
@@ -5273,12 +5378,12 @@ case 68:
 	
 	get_int( "cores", & param );
 	get_int( "threads", & nature );
-	if ( param < 1 || param > 64 ) 
-		param = max_threads;
+	if ( param < 1 || param > SRV_MAX_CORES ) 
+		param = min( max_threads, SRV_MAX_CORES );
 	
 	get_int( "threads", & nature );
-	if ( nature < 1 || nature > 64 ) 
-		nature = max_threads;
+	if ( nature < 1 || nature > SRV_MAX_CORES ) 
+		nature = min( max_threads, SRV_MAX_CORES );
 	
 	strncpy( out_bat, ( char * ) Tcl_GetVar( inter, "res2", 0 ), MAX_PATH_LENGTH - 1 );
 	
@@ -5343,8 +5448,8 @@ case 68:
 					lab1[ 0 ]='\0';
 		}
 		
-		// set background low priority in servers (cores/jobs > 8)
-		if ( nature > 8 || ( param > 8 && fnext - ffirst > 8 ) )
+		// set background low priority in servers (cores/jobs > SRV_MIN_CORES)
+		if ( nature > SRV_MIN_CORES || ( param > SRV_MIN_CORES && fnext - ffirst > SRV_MIN_CORES ) )
 		{
 			sprintf( msg, "nice %s", ch );
 			strcpy( ch, msg );
@@ -5361,34 +5466,61 @@ case 68:
 	
 	if ( fSeq && ( fnext - ffirst ) > param )	// if possible, work in blocks
 	{
+		lab2 = new char[ param * ( strlen( out_file ) + 15 ) + 1 ];
+		strcpy( lab2, "" );
+	
 		num = ( fnext - ffirst ) / param;		// base number of cases per core
 		sl = ( fnext - ffirst ) % param;		// remaining cases per core
 		for ( i = ffirst, j = 1; j <= param; ++j )	// allocates files by the number of cores
 		{
+			sprintf( lab_old, "%s_%d.log", out_file, j );
+			
 			if ( *choice == 1 || *choice == 4 )	// Windows
-				fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s\" -s %d -e %d %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s_%d.log\" 2>&1\r\n", j, nature, out_file, i, j <= sl ? i + num : i + num - 1, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file, j );
+				fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s\" -s %d -e %d %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s\" 2>&1\r\n", j, nature, out_file, i, j <= sl ? i + num : i + num - 1, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
 			else								// Unix
-				fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s -s %d -e %d %s %s %s > \"$LSD_CONFIG_PATH\"/%s_%d.log 2>&1 &\n", nature, out_file, i, j <= sl ? i + num : i + num - 1, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file, j );
+				fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s -s %d -e %d %s %s %s > \"$LSD_CONFIG_PATH\"/%s 2>&1 &\n", nature, out_file, i, j <= sl ? i + num : i + num - 1, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
+				
 			j <= sl ? i += num + 1 : i += num;
+			
+			if ( strlen( lab2 ) > 0 )
+				strcat( lab2, " " );
+			strcat( lab2, lab_old );
 		}
 	}
 	else										// if not, do one by one
+	{
+		lab2 = new char[ ( fnext - ffirst ) * ( strlen( out_file ) + 15 ) + 1 ];
+		strcpy( lab2, "" );
+	
 		for ( i = ffirst, j = 1; i < fnext; ++i, ++j )
+		{
 			if ( fSeq )
+			{
+				sprintf( lab_old, "%s_%d.log", out_file, i );
+				
 				if ( *choice == 1 || *choice == 4 )	// Windows
-					fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s_%d.lsd\" %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s_%d.log\" 2>&1\r\n", j, nature, out_file, i, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file, i );
+					fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s_%d.lsd\" %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s\" 2>&1\r\n", j, nature, out_file, i, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
 				else								// Unix
-					fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s_%d.lsd %s %s %s > \"$LSD_CONFIG_PATH\"/%s_%d.log 2>&1 &\n", nature, out_file, i, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file, i );
+					fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s_%d.lsd %s %s %s > \"$LSD_CONFIG_PATH\"/%s 2>&1 &\n", nature, out_file, i, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
+			}
 			else
 			{	// get the selected file names, one by one
 				cmd( "set res3 [lindex $bah %d]; set res3 [file tail $res3]; set last [expr [string last .lsd $res3] - 1]; set res3 [string range $res3 0 $last]", j - 1  );
 				strncpy( out_file, ( char * ) Tcl_GetVar( inter, "res3", 0 ), MAX_PATH_LENGTH - 1 );
 				
+				sprintf( lab_old, "%s.log", out_file );
+				
 				if ( *choice == 1 || *choice == 4 )	// Windows
-					fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s.lsd\" %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s.log\" 2>&1\r\n", j, nature, out_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file );
+					fprintf( f, "start \"LSD Process %d\" /B \"%%LSD_EXEC%%\" -c %d -f \"%%LSD_CONFIG_PATH%%\\%s.lsd\" %s %s %s 1> \"%%LSD_CONFIG_PATH%%\\%s\" 2>&1\r\n", j, nature, out_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
 				else								// Unix
-					fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s.lsd %s %s %s > \"$LSD_CONFIG_PATH\"/%s.log 2>&1 &\n", nature, out_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", out_file );
+					fprintf( f, "$LSD_EXEC -c %d -f \"$LSD_CONFIG_PATH\"/%s.lsd %s %s %s > \"$LSD_CONFIG_PATH\"/%s 2>&1 &\n", nature, out_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", lab_old );
 			}
+			
+			if ( strlen( lab2 ) > 0 )
+				strcat( lab2, " " );
+			strcat( lab2, lab_old );
+		}
+	}
 	
 	if ( fSeq )
 		if ( *choice == 1 || *choice == 4 )	// Windows closing
@@ -5418,12 +5550,12 @@ case 68:
 	plog( "\nParallel batch file created: %s", "", lab );
 	
 	if ( ! natBat )
-		break;
+		goto end_68;
 
 	// ask if script/batch should be executed right away
 	cmd( "set answer [ tk_messageBox -parent . -type yesno -icon question -default no -title \"Run Batch\" -message \"Run created script/batch?\" -detail \"The script/batch for running the configuration files was created. Press 'Yes' if you want to start the script/batch as separated processes now.\" ]; switch -- $answer { yes { set choice 1 } no { set choice 2 } }" ); 
 	if ( *choice == 2 )
-		break;
+		goto end_68;
 
 	// start the job
 	cmd( "set oldpath [pwd]" );
@@ -5431,16 +5563,38 @@ case 68:
 	if ( strlen( out_dir ) > 0 )
 		cmd( "cd $path" );
 
-	cmd( "if { $tcl_platform(platform) == \"windows\" } { set choice 1 } { set choice 0 }" );
-	if ( *choice == 1 )						// Windows?
-		cmd( "exec %s &", lab );
-	else									// Unix
-		cmd( "exec %s &", lab );
+	cmd( "catch { exec %s & }", lab );
+	
+	cmd( "set answer [ tk_messageBox -parent . -type yesno -default yes -icon info -title \"Run Batch\" -message \"Script/batch started\" -detail \"The script/batch was started in separated process(es). The results and log files are being created in the folder:\n\n$path\n\nDo you want to launch the multitail command now (it must be installed)?\" ]" );
+	cmd( "switch $answer { yes { set choice 1 } no { set choice 0 } }" );
+	if ( *choice )
+	{
+		// number of columns
+		--j;
+		i = j > 4 ? ( j > 8 ? ( j > 12 ? 4 : 3 ) : 2 ) : 1;
+		
+		cmd( "if [ string equal $tcl_platform(platform) unix ] { if [ string equal $tcl_platform(os) Darwin ] { set choice 2 } { set choice 1 } } { set choice 3 }" );
+	
+		switch( *choice )
+		{
+				
+			case 1:				// Linux
+				cmd( "catch { exec -- $sysTerm -e multitail -s %d --retry-all %s & }", i, lab2 );
+				break;
 
-	plog( "\nParallel batch file started: %s", "", lab );
-	cmd( "tk_messageBox -parent . -type ok -icon info -title \"Run Batch\" -message \"Script/batch started\" -detail \"The script/batch was started in separated process(es). The results and log files are being created in the folder:\n\n$path\n\nCheck the '.log' files to see the results or use the command 'tail  -F  <name>.log' in a shell/command prompt to follow simulation execution (there is one log file per assigned process/core).\"" );
+			case 2:				// Mac
+				cmd( "catch { exec osascript -e \"tell application \\\"$sysTerm\\\" to do script \\\"cd $path; clear; multitail -s %d --retry-all %s\\\"\" & } result", i, lab2 );
+				break;
+
+			case 3:				// Windows
+				cmd( "catch { exec -- $sysTerm /k multitail -s %d --retry-all %s & }", i, lab2 );
+		}
+	}
 	
 	cmd( "set path $oldpath; cd $path" );
+	
+	end_68:
+	delete [ ] lab2;
 	
 break;
 
@@ -5638,19 +5792,40 @@ case 69:
 	}
 
 	// start the job
-	cmd( "set oldpath [pwd]" );
+	cmd( "set oldpath [ pwd ]" );
 	cmd( "set path \"%s\"", path );
 	if ( strlen( path ) > 0 )
 		cmd( "cd $path" );
 
 	if ( *choice == 1 )							// Windows?
-		cmd( "exec %s -f %s %s %s %s >& %s.log  &", lab, struct_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", simul_name );
+		cmd( "catch { exec %s -f %s %s %s %s >& %s.log & }", lab, struct_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", simul_name );
 	else										// Unix
-		cmd( "exec nice %s -f %s %s %s %s >& %s.log  &", lab, struct_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", simul_name );
+		cmd( "catch { exec nice %s -f %s %s %s %s >& %s.log & }", lab, struct_file, no_res ? "-r" : "", docsv ? "-t" : "", dozip ? "" : "-z", simul_name );
 
-	cmd( "tk_messageBox -parent . -type ok -icon info -title \"Start 'No Window' Batch\" -message \"Script/batch started\" -detail \"The current configuration was started as a 'No Window' background job. The results files are being created in the folder:\\n\\n$path\\n\\nCheck the '%s.log' file to see the results or use the command 'tail  -F  %s.log' in a shell/command prompt to follow simulation execution.\"", simul_name, simul_name );
+	cmd( "set answer [ tk_messageBox -parent . -type yesno -default yes -icon info -title \"Start 'No Window' Batch\" -message \"Script/batch started\" -detail \"The current configuration was started as a 'No Window' background job. The results and log files are being created in the folder:\n\n$path\n\nDo you want to launch the tail command now?\" ]" );
+	cmd( "switch $answer { yes { set choice 1 } no { set choice 0 } }" );
+	if ( *choice )
+	{
+		cmd( "if [ string equal $tcl_platform(platform) unix ] { if [ string equal $tcl_platform(os) Darwin ] { set choice 2 } { set choice 1 } } { set choice 3 }" );
+	
+		switch( *choice )
+		{
+				
+			case 1:				// Linux
+				cmd( "catch { exec $sysTerm -e tail -F %s.log & }", simul_name );
+			 	break;
+			
+			case 2:				// Mac
+				cmd( "catch { exec osascript -e \"tell application \\\"$sysTerm\\\" to do script \\\"cd $path; clear; tail -F %s.log\\\"\" & } result", simul_name );
+				break;
+
+			case 3:				// Windows
+				cmd( "catch { exec $sysTerm /k tail -F %s.log & }", simul_name );
+		}
+	}
 	
 	cmd( "set path $oldpath; cd $path" );
+	
 break;
 
 
@@ -6311,12 +6486,17 @@ void wipe_out( object *d )
 	object *cur;
 	variable *cv;
 
+	cmd( "if [ info exists modObj ] { set pos [ lsearch -exact $modObj %s ]; if { $pos >= 0 } { set modObj [ lreplace $modObj $pos $pos ] } }", d->label );
+
 	change_descr_lab( d->label, "", "", "", "" );
 
 	for ( cv = d->v; cv != NULL; cv = cv->next )
 	{
-		// remove from element list
-		cmd( "if [ info exists modElem ] { set pos [ lsearch -exact $modElem %s ]; if { $pos >= 0 } { set modElem [ lreplace $modElem $pos $pos ] } }", cv->label  );
+		// remove from element lists
+		cmd( "if [ info exists modElem ] { set pos [ lsearch -exact $modElem %s ]; if { $pos >= 0 } { set modElem [ lreplace $modElem $pos $pos ] } }", cv->label );
+		cmd( "if [ info exists modVar ] { set pos [ lsearch -exact $modVar %s ]; if { $pos >= 0 } { set modVar [ lreplace $modVar $pos $pos ] } }", cv->label );
+		cmd( "if [ info exists modPar ] { set pos [ lsearch -exact $modPar %s ]; if { $pos >= 0 } { set modPar [ lreplace $modPar $pos $pos ] } }", cv->label );
+		cmd( "if [ info exists modFun ] { set pos [ lsearch -exact $modFun %s ]; if { $pos >= 0 } { set modFun [ lreplace $modFun $pos $pos ] } }", cv->label );
 
 		change_descr_lab( cv->label, "" , "", "", "" );
 	}
@@ -7003,7 +7183,7 @@ Returns: 0: abort, 1: continue without saving
 ****************************************************/
 bool discard_change( bool checkSense, bool senseOnly, const char title[ ] )
 {
-	// don't stop if simulation is runnig
+	// don't stop if simulation is running
 	if ( running )
 	{
 		cmd( "set answer [ tk_messageBox -parent .log -type ok -icon error -title Error -message \"Cannot quit LSD\" -detail \"Cannot quit while simulation is running. Press 'OK' to continue simulation processing. If you really want to abort the simulation, press 'Stop' in the 'Log' window first.\" ]" );
@@ -7011,7 +7191,7 @@ bool discard_change( bool checkSense, bool senseOnly, const char title[ ] )
 	}
 	// nothing to save?
 	if ( ! unsavedData && ! unsavedChange && ! unsavedSense )
-		return true;					// yes: simply discard configuration
+		goto end_true;				// yes: simply discard configuration
 	
 	// no: ask for confirmation
 	if ( ! senseOnly && unsavedData )
@@ -7023,7 +7203,7 @@ bool discard_change( bool checkSense, bool senseOnly, const char title[ ] )
 			if ( checkSense )
 				cmd( "set question \"Recent changes to sensitivity data are not saved!\nDo you want to discard and continue?\"" );
 			else
-				return true;		// checking sensitivity data is disabled
+				goto end_true;		// checking sensitivity data is disabled
 				
 	// must disable because of a bug in Tk when open dialog
 	if ( ! brCovered )
@@ -7038,11 +7218,14 @@ bool discard_change( bool checkSense, bool senseOnly, const char title[ ] )
 		cmd( ".l.v.c.var_name configure -state normal" );
 	}
 	
-	const char *ans = Tcl_GetVar( inter, "ans", 0 );
-	if ( atoi( ans ) == 1 )
-		return true;
-	else
+	if ( atoi( Tcl_GetVar( inter, "ans", 0 ) ) != 1 )
 		return false;
+	
+	end_true:
+	
+	update_model_info( );	// save windows positions if appropriate
+	
+	return true;
 }
 
 
@@ -7069,15 +7252,16 @@ int Tcl_get_var_descr( ClientData cdata, Tcl_Interp *inter, int argc, const char
 {
 	char vname[ MAX_ELEM_LENGTH ], descr[ 10 * MAX_LINE_SIZE ];
 	
-	if ( argc != 2 )					// require 1 parameter: variable name
+	if ( argc != 2 )						// require 1 parameter: variable name
 		return TCL_ERROR;
 	
 	if ( argv[ 1 ] == NULL || strlen( argv[ 1 ] ) == 0 )
-		return TCL_ERROR;
-	
-	sscanf( argv[ 1 ], "%99s", vname );	// remove unwanted spaces
-	
-	get_var_descr( vname, descr, 10 * MAX_LINE_SIZE );
+		strcpy( descr, "" );				// empty name: do nothing
+	else
+	{
+		sscanf( argv[ 1 ], "%99s", vname );	// remove unwanted spaces
+		get_var_descr( vname, descr, 10 * MAX_LINE_SIZE );
+	}
 	
 	Tcl_SetResult( inter, descr, TCL_VOLATILE );
 	return TCL_OK;		
