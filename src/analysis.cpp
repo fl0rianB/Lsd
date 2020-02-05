@@ -57,10 +57,15 @@ Sort in descending order the variables. Used in plot_cross.
 *************************************************************/
 
 /* 
-used case 44
+used case 45
 */
 
+
 #include "decl.h"
+
+void insert_store_nosave(object *r, char *lab, int *num_v);
+void insert_data_nosave(object *r, char *lab, int *num_v);
+void insert_labels_nosave(object *r, char *lab,  int *num_v);
 
 // plot types
 #define TSERIES	0
@@ -158,7 +163,7 @@ cur_plot = 0;
 file_counter = 0;
 num_var = 0;
 autom_x = true;
-max_c = min_c = num_c = 1;
+max_c = min_c = num_c = 0;
 autom = true;
 miny = maxy = 0;
 time_cross = xy = false;
@@ -435,7 +440,7 @@ cmd( "bind .da <Control-v> { set fromPlot 0; set choice 11 }; bind .da <Control-
 cmd( "bind .da <Control-e> { set choice 10 }; bind .da <Control-E> { set choice 10 }" );	// save data
 cmd( "bind .da <Control-d> { set choice 36 }; bind .da <Control-D> { set choice 36 }" );	// show data
 cmd( "bind .da <Control-t> { set choice 12 }; bind .da <Control-D> { set choice 12 }" );	// statistics
-
+cmd( "bind .da <Control-b> {set choice 45}"); //add not saved series
 // create special sort procedure to keep names starting with underline at the end
 cmd( "proc comp_und { n1 n2 } { \
 		if [ string equal $n1 $n2 ] { \
@@ -512,6 +517,7 @@ while ( true )
 	cmd( ".da.com.plot conf -text \"Plots = [ .da.vars.pl.v size ]\"" );
 
 	// analysis command loop
+   if(*choice!=45)
 	*choice = 0;
 	while ( ! *choice )
 	{
@@ -1570,11 +1576,13 @@ while ( true )
 				cmd( "radiobutton .da.s.i.c -text \"Create new series from selected\" -variable bidi -value 4" );
 				cmd( "radiobutton .da.s.i.a -text \"Moving average series from selected\" -variable bidi -value 5" );
 				cmd( "radiobutton .da.s.i.f -text \"File( s) of saved results\" -variable bidi -value 1" );
-				cmd( "pack .da.s.i.c .da.s.i.a .da.s.i.f -anchor w" );
+                cmd( "radiobutton .da.s.i.e -text \"Existing unsaved series (single time)\" -variable bidi -value 0" );
+				cmd( "pack .da.s.i.c .da.s.i.a .da.s.i.f .da.s.i.e -anchor w" );
 
 				cmd( "pack .da.s.l .da.s.i -expand yes -fill x -pady 5 -padx 5" );
 				cmd( "okhelpcancel .da.s b { set choice 1 } { LsdHelp menudata_res.html#add_series } { set choice 2 }" );
 				cmd( "showtop .da.s" );
+                cmd("bind .da.s <KeyPress-e> {set bidi 0}");
 
 				*choice = 0;
 				while ( *choice == 0 )
@@ -1600,6 +1608,9 @@ while ( true )
 						break;
 					case 1:
 						*choice = 1;
+                    case 0:
+                        *choice=45;
+
 				}
 			}
 			else
@@ -1968,6 +1979,73 @@ while ( true )
 			cmd( "destroytop .da.s" );
 
 			break;
+   
+   
+        case 45: //Add existing variables nosave
+        cmd("toplevel .s");
+        cmd("wm title .s \"Insert series\"");
+        cmd("wm transient .s .");
+        cmd("frame .s.i -relief groove -bd 2");
+        cmd("label .s.i.l -text \"Type the label of the series to insert (self-completion)\"");
+        cmd("set bidi \"\"");
+        //cmd("entry .s.i.e -textvariable bidi");
+        cmd( "ttk::combobox .s.i.e -width 20 -textvariable bidi -justify center -values $modElem" );
+        cmd("pack .s.i.l .s.i.e");
+        cmd("button .s.ok -text Ok -command {set choice 1}");
+        cmd("button .s.esc -text Cancel -command {set choice 2}");
+
+        cmd("pack .s.i .s.ok .s.esc");
+        cmd( "bind .s.i.e <KeyPress-Return> { set choice 1 }" );
+        cmd( "bind .s.i.e <KeyRelease> { \
+                if { %%N < 256 && [ info exists modElem ] } { \
+                    set b [ .s.i.e index insert ]; \
+                    set s [ .s.i.e get ]; \
+                    set f [ lsearch -glob $modElem $s* ]; \
+                    if { $f !=-1 } { \
+                        set d [ lindex $modElem $f ]; \
+                        .s.i.e delete 0 end; \
+                        .s.i.e insert 0 $d; \
+                        .s.i.e index $b; \
+                        .s.i.e selection range $b end \
+                    } \
+                } \
+            }" );
+
+        cmd( "showtop .s" );
+        cmd( "focus .s.i.e" );
+        //cmd("bind .s.i.e <KeyPress-Return> {set choice 1}");
+        cmd("bind .s <KeyPress-Escape> {set choice 2}");
+        #ifndef DUAL_MONITOR
+        cmd("set w .s; wm withdraw $w; update idletasks; set x [expr [winfo screenwidth $w]/2 - [winfo reqwidth $w]/2 - [winfo vrootx [winfo parent $w]]]; set y [expr [winfo screenheight $w]/2 - [winfo reqheight $w]/2 - [winfo vrooty [winfo parent $w]]]; wm geom $w +$x+$y; update; wm deiconify $w");
+        #else
+        cmd("set w .s; wm withdraw $w; update idletasks; set x [expr [winfo screenwidth $w]/2 - [winfo reqwidth $w]/2]; set y [expr [winfo screenheight $w]/2 - [winfo reqheight $w]/2]; wm geom $w +$x+$y; update; wm deiconify $w");
+        #endif
+        *choice=0;
+        cmd("focus .s.i.e");
+        //cmd("bind .s.i.e <KeyRelease> {if { %N < 256} { set b [.s.i.e index insert]; set c [.s.i.e get]; set f [lsearch -glob $ModElem $c*]; if { $f !=-1 } {set d [lindex $ModElem $f]; .s.i.e delete 0 end; .s.i.e insert 0 $d; .s.i.e index $b; .s.i.e selection range $b end } { } } { } }");
+          while(*choice==0)
+            Tcl_DoOneEvent(0);
+        cmd("destroy .s");
+        if(*choice==2)
+         {*choice=0;
+          break;
+         }
+        cmd("toplevel .s");
+        cmd("wm transient .s .");
+        cmd("label .s.l -text \"Inserting new series\"");
+        cmd("pack .s.l");
+        app=(char *)Tcl_GetVar(inter, "bidi",0);
+        strcpy(filename,app);
+        i=0;
+        insert_data_nosave(root, filename, &i);
+        cmd("destroy .s");
+        cmd("set tit [.da.vars.ch.v get 0]");
+        cmd("focus .da");
+        cmd("showtop .da");
+        cmd( ".da.vars.lb.v see end" );
+        *choice=0;
+        
+        break;
 
 		// lattice parameters
 		case 44:		
@@ -2470,8 +2548,8 @@ void update_bounds( void )
 		maxy2 = 1;
 	}
 	
-	if ( min_c < 1 )
-		min_c = 1;
+	if ( min_c < 0 )
+		min_c = 0;
 	
 	if ( max_c <= min_c )
 		max_c = min_c + 1;
@@ -2489,7 +2567,7 @@ void plot_tseries( int *choice )
 	bool y2on, done, stopErr = false;
 	char *app, **str, **tag;
 	double temp, **data, **logdata;
-	int i, j, *start, *end, *id, logErrCnt = 0;
+	int i, j, h, *start, *end, *myid, logErrCnt = 0;
 
 	if ( nv > 1000 )
 	{
@@ -2510,13 +2588,13 @@ void plot_tseries( int *choice )
 	logdata = new double *[ nv ];
 	start = new int [ nv ];
 	end = new int [ nv ];
-	id = new int [ nv ];
+	myid = new int [ nv ];
 	str = new char *[ nv ];
 	tag = new char *[ nv ];
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -2531,12 +2609,12 @@ void plot_tseries( int *choice )
 		cmd( "set res [.da.vars.ch.v get %d]", i );
 		app = ( char * ) Tcl_GetVar( inter, "res", 0 );
 		strcpy( msg, app );
-		sscanf( msg, "%s %s (%d-%d) #%d", str[ i ], tag[ i ], &start[ i ], &end[ i ], &id[ i ] );
-	  
+		sscanf( msg, "%s %s (%d-%d) #%d", str[ i ], tag[ i ], &start[ i ], &end[ i ], &myid[i] );
+        //id[ i ]=h;
 		// get series data and take logs if necessary
 		if ( autom_x || ( start[ i ] <= max_c && end[ i ] >= min_c ) )
 		{
-			data[ i ] = vs[ id[ i ] ].data;
+			data[ i ] = vs[ myid[ i ] ].data;
 			if ( data[ i ] == NULL )
 				plog( "\nError: invalid data\n" );
 	   
@@ -2664,7 +2742,7 @@ void plot_tseries( int *choice )
 	update_bounds( );
 	
 	// plot all series
-	plot( TSERIES, nv, data, start, end, id, str, tag, choice );
+	plot( TSERIES, nv, data, start, end, myid, str, tag, choice );
 
 	for ( i = 0; i < nv; ++i )
 	{
@@ -2681,7 +2759,7 @@ void plot_tseries( int *choice )
 	delete [ ] data;
 	delete [ ] start;
 	delete [ ] end;
-	delete [ ] id;
+	delete [ ] myid;
 }
 
 
@@ -2726,7 +2804,7 @@ void plot_cross( int *choice )
 	
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -2923,7 +3001,7 @@ void set_cs_data( int *choice )
 
 	cmd( "frame $p.u.i.e" );
 	cmd( "label $p.u.i.e.l -text \"Time step to add\"" );
-	cmd( "entry $p.u.i.e.e -width 10 -validate focusout -vcmd { if { [ string is integer -strict %%P ] && %%P >= $minc && %%P <= $maxc } { set bidi %%P; return 1 } { %%W delete 0 end; %%W insert 0 $bidi; return 0 } } -invcmd { bell } -justify center" );
+	cmd( "entry $p.u.i.e.e -width 10 -validate focusout -vcmd { if { [ string is integer -strict %%P ] && %%P >= 0 && %%P <= $maxc } { set bidi %%P; return 1 } { %%W delete 0 end; %%W insert 0 $bidi; return 0 } } -invcmd { bell } -justify center" );
 	cmd( "$p.u.i.e.e insert 0 $bidi" );
 	cmd( "pack $p.u.i.e.l $p.u.i.e.e" );
 	 
@@ -2989,7 +3067,8 @@ void set_cs_data( int *choice )
 			.da.s.u.i.e.e selection range 0 end \
 		}" );
 
-	cmd( "XYZokhelpcancel $p fb Add Delete \"Delete All\" { \
+    cmd("set res $minc");
+    cmd( "XYZokhelpcancel $p fb Add Delete \"Delete All\" { \
 			set a [ .da.s.u.i.e.e get ]; \
 			if { [ lsearch $list_times $a ] < 0 && [ string is integer -strict $a ] && $a >= $minc && $a <= $maxc } { \
 				.da.s.u.i.lb.lb.lb insert end $a; \
@@ -3152,6 +3231,97 @@ void insert_data_mem( object *r, int *num_v, int *num_c )
 	vs = new store[ *num_v ];
 	*num_v = 0;
 	insert_store_mem( r, num_v );
+}
+
+
+/***************************************************
+insert_data_nosave
+****************************************************/
+void insert_data_nosave(object *r, char *lab, int *num_v)
+{
+store *app;
+int i;
+insert_labels_nosave(r,lab, num_v);
+app=new store[num_var+ *num_v];
+for(i=0; i<num_var; i++)
+ {app[i]=vs[i];
+  strcpy(app[i].label, vs[i].label);
+  strcpy(app[i].tag, vs[i].tag);
+ }
+delete[] vs;
+vs=app;
+
+*num_v=num_var;
+insert_store_nosave(r,lab, num_v);
+num_var=*num_v;
+
+
+sprintf(msg, ".da.com.nvar conf -text \"Series = %d\"",num_var);
+cmd(msg);
+}
+
+
+/***************************************************
+INSERT_STORE_NOSAVE
+****************************************************/
+void insert_store_nosave(object *r, char *lab, int *num_v)
+{
+object *cur;
+variable *cv;
+bridge *cb;
+
+int flag=0;
+for(cur=r; cur!=NULL; cur=cur->next)
+ {for(cv=cur->v; cv!=NULL; cv=cv->next)
+   if(cv->save==0 && !strcmp(cv->label, lab))
+    {
+     strcpy(vs[*num_v].label,cv->label);
+     set_lab_tit(cv);
+     strcpy(vs[*num_v].tag,cv->lab_tit);
+     vs[*num_v].start=0;
+     vs[*num_v].end=0;
+     vs[*num_v].rank=*num_v;
+     vs[*num_v].data=&(cv->val[0]);
+     *num_v+=1;
+     flag=1;
+    }
+//  if(cur->b!=NULL && cur->b->head!=NULL && flag==0)
+  for(cb=cur->b; cb!=NULL && cb->head!=NULL && flag==0; cb=cb->next)
+   insert_store_nosave(cb->head,lab, num_v);
+
+ }
+}
+
+
+/***************************************************
+INSERT_LABELS_NOSAVE
+****************************************************/
+void insert_labels_nosave(object *r, char *lab,  int *num_v)
+{
+object *cur;
+variable *cv;
+bridge *cb;
+int flag=0;
+
+for(cur=r; cur!=NULL; cur=cur->next)
+ {
+  for(cv=cur->v; cv!=NULL; cv=cv->next)
+   {
+   if(cv->save==0 && !strcmp(cv->label,lab))
+    {
+     set_lab_tit(cv);
+     sprintf(msg, ".da.vars.lb.v insert end \"%s %s (%d-%d) #%d\"", cv->label, cv->lab_tit, 0, 0, num_var + (*num_v));
+     cmd(msg);
+
+     *num_v+=1;
+     flag=1;
+    }
+   }
+  //if(cur->b !=NULL && cur->b->head!=NULL && flag==0)
+  for(cb=cur->b; cb!=NULL && cb->head!=NULL && flag==0; cb=cb->next)
+   insert_labels_nosave(cb->head, lab, num_v);
+
+ }
 }
 
 
@@ -3504,7 +3674,7 @@ void statistics( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -3670,7 +3840,7 @@ void statistics_cross( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -3683,7 +3853,8 @@ void statistics_cross( int *choice )
 		cmd( "set res [.da.vars.ch.v get %d]", i );
 		app = ( char * ) Tcl_GetVar( inter, "res", 0 );
 		strcpy( msg, app );
-		sscanf( msg, "%s %s (%d-%d) #%d", str[ i ], tag[ i ], &start[ i ], &end[ i ], &id[ i ] );
+		sscanf( msg, "%s %s (%d-%d) #%d", str[ i ], tag[ i ], &start[ i ], &end[ i ], &h );
+        id[i]=h;
 		
 		data[ i ] = vs[ id[ i ] ].data;
 		if ( data[ i ] == NULL )
@@ -3950,7 +4121,7 @@ void plot_gnu( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -4400,7 +4571,7 @@ void plot_cs_xy( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -4804,7 +4975,7 @@ void plot_phase_diagram( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -5960,7 +6131,7 @@ void histograms_cs( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -6365,7 +6536,7 @@ void create_series( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 
@@ -6672,7 +6843,7 @@ void create_maverag( int *choice )
 
 	if ( autom_x )
 	{
-		min_c = 1;
+		min_c = 0;
 		max_c = num_c;
 	}
 

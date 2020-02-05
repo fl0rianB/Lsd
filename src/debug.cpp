@@ -1344,8 +1344,8 @@ void show_tmp_vars( object *r, bool update )
 		cmd( "label $in.l3 -text \"(double-click name to\nchange to object)\"" );
 		cmd( "pack $in.l3 -pady 5" );
 
-		cmd( "showtop $in topleftW 0 1 0" );
-
+		//cmd( "showtop $in topleftW 0 1 0" );
+cmd( "showtop $in centerS" );
 		cmd( "$in.n.t tag configure bold -font [ font create -family TkDefaultFont -size $small_character -weight bold ]" );
 
 		cmd( "if { ! [ winfo exists .deb.net ] } { align $in .deb } { align $in .deb.net }" );
@@ -1371,7 +1371,7 @@ void show_tmp_vars( object *r, bool update )
 	
 	cmd( "$in.n.t insert end \"Temporary storage\n\" bold" );
 	
-	for ( i = 1, j = 0; j < 10; ++i, ++j )
+	for ( i = 1, j = 0; j < 100; ++i, ++j )
 	{
 		cmd( "frame $in.n.t.n$i" );
 		cmd( "label $in.n.t.n$i.var -width 6 -pady 0 -bd 0 -text \"v\\\[%d\\]\"", j );
